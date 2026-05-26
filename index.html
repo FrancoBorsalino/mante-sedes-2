@@ -336,6 +336,11 @@
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-title">Sedes silenciosas · días sin reportar</div>
+      <div id="silent-sedes" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;padding-right:4px"></div>
+    </div>
+
     <div class="card full" style="grid-column: unset">
       <div class="card-title">Requerimientos por sede · todas las sedes</div>
       <div class="legend">
@@ -555,34 +560,84 @@ function update() {
     });
   }
 
-  // GRÁFICO 2 — Donut áreas
+  // GRÁFICO 2 — Radar áreas
   const sectorMap = {};
   data.forEach(d => { if (d.Sector) sectorMap[d.Sector] = (sectorMap[d.Sector]||0)+1; });
   const sectorLabels = Object.keys(sectorMap).sort((a,b) => sectorMap[b]-sectorMap[a]);
   const sectorVals   = sectorLabels.map(s => sectorMap[s]);
-  const DONUT_COLORS = ['#FF5C33','#4CAF7D','#5B9CF6','#A78BFA','#F5A623','#E879A0','#34D399','#FB923C'];
   showEmpty('areas', sectorLabels.length === 0);
   if (sectorLabels.length > 0) {
     charts['areas'] = new Chart(document.getElementById('c-areas'), {
-      type: 'doughnut',
-      data: { labels:sectorLabels, datasets:[{ data:sectorVals,
-        backgroundColor:DONUT_COLORS.slice(0,sectorLabels.length), borderWidth:0, hoverOffset:6 }] },
-      options: { ...base, cutout:'62%', plugins: {
-        legend: { display:true, position:'right', labels: {
-          color:'#C9D1D3', font:{size:11,family:'Roboto'}, padding:12, boxWidth:10, boxHeight:10,
-          generateLabels: chart => {
-            const ds = chart.data.datasets[0];
-            const t = ds.data.reduce((a,b)=>a+b,0);
-            return chart.data.labels.map((label,i) => ({
-              text: label + '  ' + Math.round(ds.data[i]/t*100) + '%',
-              fillStyle: ds.backgroundColor[i], fontColor:'#C9D1D3', hidden:false, index:i
-            }));
+      type: 'radar',
+      data: {
+        labels: sectorLabels,
+        datasets: [{
+          data: sectorVals,
+          backgroundColor: 'rgba(255,92,51,0.15)',
+          borderColor: '#FF5C33',
+          borderWidth: 2,
+          pointBackgroundColor: '#FF5C33',
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }]
+      },
+      options: { ...base,
+        scales: {
+          r: {
+            ticks: { color: MUTED, font:{size:9,family:'Roboto'}, backdropColor:'transparent', stepSize:1 },
+            grid:  { color: 'rgba(255,255,255,0.07)' },
+            angleLines: { color: 'rgba(255,255,255,0.07)' },
+            pointLabels: { color: '#C9D1D3', font:{size:10,family:'Roboto'} }
           }
-        }},
-        tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' (' + Math.round(ctx.raw/total*100) + '%)' } }
-      }}
+        },
+        plugins: {
+          ...base.plugins,
+          tooltip: { callbacks: { label: ctx => ' ' + ctx.raw + ' requerimientos (' + Math.round(ctx.raw/total*100) + '%)' } }
+        }
+      }
     });
   }
+
+  // SEDES SILENCIOSAS — días desde último reporte (usa todos los datos, no filtra por período)
+  const allData = activeData();
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const lastReport = {};
+  allData.forEach(d => {
+    if (!d.Sede || !d.date) return;
+    if (!lastReport[d.Sede] || d.date > lastReport[d.Sede]) lastReport[d.Sede] = d.date;
+  });
+  const silentEl = document.getElementById('silent-sedes');
+  const sedesSilent = ALL_SEDES.map(sede => {
+    const last = lastReport[sede];
+    if (!last) return { sede, dias: null };
+    const diff = Math.floor((today - new Date(last + 'T00:00:00')) / 86400000);
+    return { sede, dias: diff, last };
+  }).sort((a,b) => {
+    if (a.dias === null && b.dias === null) return 0;
+    if (a.dias === null) return -1;
+    if (b.dias === null) return -1;
+    return b.dias - a.dias;
+  });
+
+  silentEl.innerHTML = sedesSilent.map(({ sede, dias, last }) => {
+    let color, badge;
+    if (dias === null) {
+      color = 'var(--muted)'; badge = 'Sin reportes';
+    } else if (dias === 0) {
+      color = '#4CAF7D'; badge = 'Hoy';
+    } else if (dias <= 7) {
+      color = '#4CAF7D'; badge = dias + 'd';
+    } else if (dias <= 14) {
+      color = '#F5A623'; badge = dias + 'd';
+    } else {
+      color = '#FF5C33'; badge = dias + 'd';
+    }
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem .5rem;border-radius:4px;background:rgba(255,255,255,0.03)">' +
+      '<span style="font-size:11px;color:var(--text)">' + sede.replace(' - ', ' · ') + '</span>' +
+      '<span style="font-size:11px;font-weight:700;color:' + color + ';min-width:48px;text-align:right">' + badge + '</span>' +
+    '</div>';
+  }).join('');
 
   // GRÁFICO 3 — Sedes (todas)
   const sedeExec  = ALL_SEDES.map(s => data.filter(d => d.Sede===s && d.Estatus==='Ejecutado').length);
@@ -639,7 +694,8 @@ function renderEdChart(data) {
       return '<div style="display:grid;grid-template-columns:180px 32px 1fr;align-items:center;gap:10px;margin-bottom:4px">' +
         '<div style="font-size:11px;color:' + tc + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + item + '">' + item + '</div>' +
         '<div style="font-size:13px;font-weight:700;color:' + vc + ';text-align:right">' + (vt || '') + '</div>' +
-        '<div style="background:rgba(255,255,255,0.04);border-radius:3px;height:8px;overflow:hidden;display:flex;cursor:default" title="Ejecutado: ' + ve + ' · En proceso: ' + vp + '">' +
+        '<div style="background:rgba(255,255,255,0.04);border-radius:3px;height:8px;overflow:hidden;display:flex;cursor:default" ' +
+        'title="✓ Ejecutado: ' + ve + '  ·  ⟳ En proceso: ' + vp + '">' +
           '<div style="width:' + pctE + '%;height:100%;background:#4CAF7D"></div>' +
           '<div style="width:' + pctP + '%;height:100%;background:#FF5C33"></div>' +
         '</div></div>';
