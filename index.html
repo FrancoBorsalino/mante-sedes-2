@@ -343,6 +343,11 @@
       </div>
     </div>
 
+    <div class="card" style="grid-column:span 1;min-width:0">
+      <div class="card-title">Top problemas recurrentes</div>
+      <div id="top-problemas" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px"></div>
+    </div>
+
     <div class="card full">
       <div class="card-title">Requerimientos por sede · todas las sedes</div>
       <div class="legend">
@@ -382,6 +387,19 @@ const CATALOGO = [
   'Corebag','Soga','Juego de anillas','Juego de miniparalelas',
   'Chalecos 10kg','Colchonetas','Cinturón de lastre','Magnesio 1KG'
 ];
+
+const PROBLEMAS = {
+  'Humedad / Filtraciones': ['humedad', 'filtrac', 'gotea', 'agua'],
+  'Iluminación':            ['luz', 'lampar', 'spot', 'led', 'foco'],
+  'Puertas / Cerraduras':   ['puerta', 'cerradura', 'cerrojo', 'llave'],
+  'Pisos / Paredes':        ['piso', 'pared', 'zócalo', 'pintura', 'durlock', 'socalo'],
+  'Sanitarios':             ['inodoro', 'canilla', 'baño', 'pileta', 'depósito', 'agua'],
+  'Equipamiento roto':      ['roto', 'rompio', 'rompió', 'quebr', 'partido', 'banda', 'coreb', 'chaleco', 'box', 'cajon', 'disco', 'pelota', 'parale', 'anilla', 'colcho', 'cintur', 'magnesio'],
+  'Reposición':             ['falta', 'necesitamos', 'precisamos', 'reponer', 'tenemo'],
+  'Limpieza':               ['sucio', 'olor', 'limpieza', 'alcohol'],
+  'Estructural':            ['techo', 'fachada', 'pared', 'rajadura'],
+  'Tecnología':             ['pc', 'computadora', 'wifi', 'pantalla', 'tv'],
+};
 
 // Aliases para normalizar nombres del sheet
 const ALIASES = {
@@ -540,6 +558,9 @@ function update() {
   document.getElementById('ed-section').style.display = edData.length > 0 ? 'block' : 'none';
   if (edData.length > 0) renderEdChart(data);
 
+  // Top problemas
+  renderTopProblemas(data);
+
   // GRÁFICO 1 — Días (línea)
   const byDay = data.reduce((m, d) => { m[d.date] = (m[d.date]||0)+1; return m; }, {});
   const allDates = [];
@@ -617,7 +638,7 @@ function update() {
     return { sede, dias: diff, last };
   }).sort((a,b) => {
     if (a.dias === null && b.dias === null) return 0;
-    if (a.dias === null) return -1;
+    if (a.dias === null) return 1;
     if (b.dias === null) return -1;
     return b.dias - a.dias;
   });
@@ -730,6 +751,44 @@ function renderEdChart(data) {
     });
     bar.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
   });
+}
+
+// ── TOP PROBLEMAS RECURRENTES ─────────────────────────────────────────────────
+function renderTopProblemas(data) {
+  const counts = {};
+  Object.keys(PROBLEMAS).forEach(p => counts[p] = 0);
+
+  data.forEach(row => {
+    if (!row.Descripcion) return;
+    const desc = row.Descripcion.toLowerCase();
+    Object.entries(PROBLEMAS).forEach(([categoria, keywords]) => {
+      if (keywords.some(kw => desc.includes(kw))) counts[categoria]++;
+    });
+  });
+
+  const sorted = Object.entries(counts).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+  const el = document.getElementById('top-problemas');
+
+  if (!sorted.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--muted)">Sin datos en el período.</p>';
+    return;
+  }
+
+  const maxVal = sorted[0][1];
+  const colors = ['#FF5C33','#F5A623','#5B9CF6','#A78BFA','#4CAF7D','#E879A0','#34D399','#FB923C','#9DA5A8','#C9D1D3'];
+  el.innerHTML = sorted.map(([cat, val], i) => {
+    const pct = (val / maxVal * 100).toFixed(0);
+    const color = colors[i % colors.length];
+    return '<div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
+        '<span style="font-size:11px;color:var(--text)">' + cat + '</span>' +
+        '<span style="font-size:11px;font-weight:700;color:' + color + '">' + val + '</span>' +
+      '</div>' +
+      '<div style="background:rgba(255,255,255,0.04);border-radius:3px;height:6px;overflow:hidden">' +
+        '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px"></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 // ── RESET & EVENTS
