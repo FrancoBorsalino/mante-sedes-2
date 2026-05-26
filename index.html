@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mantenimiento de Sedes · CORE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --orange:  #FF5C33;
+    --dark:    #333333;
+    --mid:     #474747;
+    --grey:    #9DA5A8;
+    --light:   #C9D1D3;
+    --white:   #FFFFFF;
+    --bg:      #1a1a1a;
+    --bg2:     #242424;
+    --bg3:     #2e2e2e;
+    --border:  rgba(255,255,255,0.08);
+    --text:    #F0EEEA;
+    --muted:   #9DA5A8;
+    --exec:    #4CAF7D;
+    --proc:    #FF5C33;
+    --font:    'Roboto', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: #111111;
+    border-bottom: 2px solid var(--orange);
+    padding: 0 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    gap: 1rem;
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  .logo-img { height: 26px; width: auto; }
+  .logo-text {
+    font-family: 'Barlow', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: .18em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .header-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(255,255,255,0.15);
+  }
+  .header-title {
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--muted);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .header-title strong {
+    color: var(--white);
+    font-weight: 500;
+  }
+
+  /* SYNC BAR */
+  .sync-bar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: .6rem 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .btn-sync {
+    background: var(--orange);
+    border: none;
+    color: white;
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    padding: .45rem 1.1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity .2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-sync:hover { opacity: .85; }
+  .btn-sync:disabled { opacity: .4; cursor: not-allowed; }
+  .sync-status {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .04em;
+  }
+  .sync-status.ok  { color: var(--exec); }
+  .sync-status.err { color: #ff6b6b; }
+  .spin {
+    display: inline-block; width: 10px; height: 10px;
+    border: 2px solid currentColor; border-top-color: transparent;
+    border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* DATE FILTER */
+  .filter-group {
+    display: flex; align-items: center; gap: .5rem; margin-left: auto;
+  }
+  .filter-label {
+    font-size: 11px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .07em; font-weight: 500;
+  }
+  .date-wrap {
+    display: flex; align-items: center; gap: .4rem;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 4px; padding: .35rem .7rem;
+  }
+  .date-wrap span { font-size: 11px; color: var(--muted); }
+  input[type="date"] {
+    background: transparent; border: none; color: var(--text);
+    font-family: var(--font); font-size: 11px; outline: none;
+    cursor: pointer; color-scheme: dark;
+  }
+  .btn-reset {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--font); font-size: 11px;
+    text-transform: uppercase; letter-spacing: .07em;
+    padding: .4rem .8rem; border-radius: 4px; cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-reset:hover { border-color: var(--orange); color: var(--orange); }
+
+  /* MAIN */
+  main { padding: 2rem 2.5rem; }
+
+  .range-label {
+    font-size: 11px; color: var(--muted); letter-spacing: .05em;
+    text-transform: uppercase; margin-bottom: 1.5rem;
+  }
+  .range-label strong { color: var(--orange); font-weight: 500; }
+
+  /* KPI ROW */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) 1.2fr;
+    gap: 10px;
+    margin-bottom: 1.75rem;
+  }
+  .kpi {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .kpi::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--orange); opacity: 0;
+    transition: opacity .2s;
+  }
+  .kpi:hover::before { opacity: 1; }
+  .kpi-label {
+    font-size: 10px; font-weight: 500; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .1em; margin-bottom: .6rem;
+  }
+  .kpi-val {
+    font-size: 2.5rem; font-weight: 700; line-height: 1; color: var(--white);
+  }
+  .kpi-val.orange { color: var(--orange); }
+  .kpi-val.green  { color: var(--exec); }
+  .kpi-sub {
+    font-size: 11px; color: var(--muted); margin-top: .4rem; font-weight: 300;
+  }
+  /* Elem Deportivos KPI — special */
+  .kpi.kpi-alert {
+    border-color: rgba(255,92,51,.25);
+    background: linear-gradient(135deg, var(--bg2) 60%, rgba(255,92,51,.06));
+  }
+  .kpi.kpi-alert .kpi-val { color: var(--orange); }
+  .kpi-alert-tag {
+    display: inline-block; margin-top: .5rem;
+    background: rgba(255,92,51,.15); color: var(--orange);
+    font-size: 9px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 3px;
+  }
+
+  /* CHARTS */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    transition: border-color .2s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.14); }
+  .card.full { grid-column: 1 / -1; }
+  .card-title {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .12em; margin-bottom: 1rem;
+  }
+  .legend {
+    display: flex; gap: 14px; margin-bottom: .75rem; flex-wrap: wrap;
+  }
+  .legend span {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--muted); font-weight: 400;
+  }
+  .lsq { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .chart-wrap { position: relative; }
+  .h160 { height: 160px; }
+  .h340 { height: 340px; }
+  .empty {
+    display: none; align-items: center; justify-content: center;
+    font-size: 12px; color: var(--muted); height: 100%;
+    position: absolute; inset: 0;
+  }
+
+  /* footer */
+  footer {
+    padding: 1.25rem 2.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: .5rem;
+  }
+  footer span { color: var(--orange); font-weight: 700; }
+
+  @media (max-width: 720px) {
+    header, .sync-bar, main { padding-left: 1rem; padding-right: 1rem; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .card.full { grid-column: 1; }
+    .filter-group { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="logo-text">CORE</span>
+    <div class="header-divider"></div>
+    <div class="header-title"><strong>Mantenimiento</strong> de Sedes</div>
+  </div>
+</header>
+
+<div class="sync-bar">
+  <button class="btn-sync" id="btn-sync" onclick="syncFromSheet()">
+    ↻ Actualizar datos
+  </button>
+  <span class="sync-status" id="sync-status">Datos embebidos · presioná para sincronizar</span>
+  <div class="filter-group">
+    <span class="filter-label">Período</span>
+    <div class="date-wrap">
+      <input type="date" id="date-from" value="2026-05-05">
+      <span>→</span>
+      <input type="date" id="date-to" value="2026-05-15">
+    </div>
+    <span class="filter-label" style="margin-left:.5rem">Supervisor</span>
+    <select id="sup-filter" onchange="update()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:11px;padding:.38rem .7rem;border-radius:4px;outline:none;cursor:pointer;color-scheme:dark">
+      <option value="">Todos</option>
+    </select>
+    <button class="btn-reset" onclick="resetDates()">Reset</button>
+  </div>
+</div>
+
+<main>
+  <p class="range-label" id="range-label"></p>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Requerimientos</div>
+      <div class="kpi-val" id="k-total">—</div>
+      <div class="kpi-sub" id="k-total-sub">en el período</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Ejecutados</div>
+      <div class="kpi-val green" id="k-exec">—</div>
+      <div class="kpi-sub" id="k-exec-pct">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">En proceso</div>
+      <div class="kpi-val orange" id="k-proc">—</div>
+      <div class="kpi-sub" id="k-proc-pct">—</div>
+    </div>
+    <div class="kpi kpi-alert">
+      <div class="kpi-label">Elementos Deportivos</div>
+      <div class="kpi-val" id="k-edeport">—</div>
+      <div class="kpi-sub" id="k-edeport-sub">—</div>
+      <div class="kpi-alert-tag">Gestión Compras</div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+
+    <div class="card full">
+      <div class="card-title">Requerimientos por día</div>
+      <div class="chart-wrap h160">
+        <canvas id="c-dias"></canvas>
+        <div class="empty" id="empty-dias">Sin datos en el período seleccionado</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Distribución por área</div>
+      <div class="chart-wrap" style="height:280px">
+        <canvas id="c-areas"></canvas>
+        <div class="empty" id="empty-areas">Sin datos</div>
+      </div>
+    </div>
+
+    <div class="card full" style="grid-column: unset">
+      <div class="card-title">Requerimientos por sede · todas las sedes</div>
+      <div class="legend">
+        <span><span class="lsq" style="background:var(--exec)"></span>Ejecutado</span>
+        <span><span class="lsq" style="background:var(--orange)"></span>En proceso</span>
+        <span><span class="lsq" style="background:var(--bg3);border:1px solid var(--border)"></span>Sin reclamos</span>
+      </div>
+      <div class="chart-wrap h340">
+        <canvas id="c-sede"></canvas>
+        <div class="empty" id="empty-sede">Sin datos</div>
+      </div>
+    </div>
+
+  </div>
+  <!-- ELEMENTOS DEPORTIVOS -->
+  <div id="ed-section" style="margin-top:12px;display:none">
+    <div class="card" style="border-color:rgba(255,92,51,.2)">
+      <div class="card-title">Elementos Deportivos · cantidades solicitadas en el período</div>
+      <div id="ed-results"></div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <span>CORE</span> · Mantenimiento de Sedes · datos en tiempo real desde Google Sheets
+</footer>
+
+<script>
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzDUNaqW3_KQZmn7lHpHVES_wXEhUEJLhKI68Pu47NWA3KfkAOQsGimj38nUy2wJzlD/exec';
+const ALL_SEDES = ["1 - RECOLETA", "2 - CAÑITAS II", "3 - PALERMO SOHO", "4 - BARRIO NORTE", "5 - GUTIERREZ", "6 - CABILDO", "7 - CABALLITO", "8 - SANTA FE", "9 - ALMAGRO", "10 - URQUIZA", "11 - SCALABRINI", "12 - JUNCAL", "13 - COLEGIALES", "14 - CARRANZA", "15 - HOLMBERG", "18 - PALERMO CHICO", "19 - OLIVOS", "23 - P. CENTENARIO", "24 - TRIUNVIRATO", "25 - DIRECTORIO", "26 - MANSILLA", "30 - NUÑEZ", "31 - MARTINEZ"];
+const RAW = [{"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-06", "Supervisor": "Débora", "Sede": "10 - URQUIZA", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-08", "Supervisor": "Débora", "Sede": "10 - URQUIZA", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-08", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": "Active Clean"}, {"date": "2026-05-08", "Supervisor": "Bautista", "Sede": "14 - CARRANZA", "Sector": "Limpieza", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-08", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Fachada", "Estatus": "Ejecutado", "Proveedor": "Cerrajería Marina"}, {"date": "2026-05-08", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-09", "Supervisor": "Angel", "Sede": "1 - RECOLETA", "Sector": "Paisajismo", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-11", "Supervisor": "Valentin", "Sede": "15 - HOLMBERG", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-11", "Supervisor": "Diego", "Sede": "5 - GUTIERREZ", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-11", "Supervisor": "Angel", "Sede": "1 - RECOLETA", "Sector": "Fachada", "Estatus": "Ejecutado", "Proveedor": "Cerrajería Marina"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "7 - CABALLITO", "Sector": "Limpieza", "Estatus": "Ejecutado", "Proveedor": "Active Clean"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "7 - CABALLITO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "25 - DIRECTORIO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "25 - DIRECTORIO", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Angel", "Sede": "13 - COLEGIALES", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Angel", "Sede": "13 - COLEGIALES", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Paisajismo", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Diego Hiden"}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "3 - PALERMO SOHO", "Sector": "Recepción", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "8 - SANTA FE", "Sector": "Recepción", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "3 - PALERMO SOHO", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "3 - PALERMO SOHO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Valeria", "Sede": "26 - MANSILLA", "Sector": "Limpieza", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Lucas", "Sede": "11 - SCALABRINI", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-14", "Supervisor": "Angel", "Sede": "13 - COLEGIALES", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-14", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "11 - SCALABRINI", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-14", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Diego Hiden"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "11 - SCALABRINI", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Fachada", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "12 - JUNCAL", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": "Cristales Coronel"}, {"date": "2026-05-15", "Supervisor": "Lucas", "Sede": "23 - P. CENTENARIO", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": "Gustavo"}, {"date": "2026-05-15", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-15", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-15", "Supervisor": "Juliana", "Sede": "6 - CABILDO", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": null}];
+
+const CATALOGO = [
+  'Box de madera','Banda Naranja','Banda Negra','Pelotas 6kg','Discos 5kg',
+  'Bandas de glúteos res. baja','Bandas de glúteos res. media','Bandas de glúteos res. alta',
+  'Corebag','Soga','Juego de anillas','Juego de miniparalelas',
+  'Chalecos 10kg','Colchonetas','Cinturón de lastre','Magnesio 1KG'
+];
+
+// Aliases para normalizar nombres del sheet
+const ALIASES = {
+  'anillas': 'Juego de anillas',
+  'juego de anillas': 'Juego de anillas',
+  'miniparalelas': 'Juego de miniparalelas',
+  'paralelas': 'Juego de miniparalelas',
+  'juego de miniparalelas': 'Juego de miniparalelas',
+  'soga': 'Soga', 'sogas': 'Soga',
+  'corebag': 'Corebag', 'core bag': 'Corebag',
+  'banda naranja': 'Banda Naranja',
+  'banda negra': 'Banda Negra',
+  'box de madera': 'Box de madera', 'cajón de madera': 'Box de madera',
+  'pelotas 6kg': 'Pelotas 6kg', 'pelota 6kg': 'Pelotas 6kg',
+  'discos 5kg': 'Discos 5kg', 'disco 5kg': 'Discos 5kg', 'disco': 'Discos 5kg', 'discos': 'Discos 5kg',
+  'bandas de glúteos res. baja': 'Bandas de glúteos res. baja',
+  'bandas de glúteos res. media': 'Bandas de glúteos res. media',
+  'bandas de glúteos res. alta': 'Bandas de glúteos res. alta',
+  'chalecos 10kg': 'Chalecos 10kg', 'chaleco 10kg': 'Chalecos 10kg', 'chalecos': 'Chalecos 10kg',
+  'colchonetas': 'Colchonetas', 'colchoneta': 'Colchonetas',
+  'cinturón de lastre': 'Cinturón de lastre', 'cinturones': 'Cinturón de lastre',
+  'magnesio 1kg': 'Magnesio 1KG', 'magnesio 1kg': 'Magnesio 1KG'
+};
+
+function normalizeItem(raw) {
+  const key = raw.toLowerCase().trim();
+  if (ALIASES[key]) return ALIASES[key];
+  for (const alias in ALIASES) {
+    if (key.includes(alias)) return ALIASES[alias];
+  }
+  // Try matching against catalogue
+  for (const cat of CATALOGO) {
+    if (key.includes(cat.toLowerCase())) return cat;
+  }
+  return null;
+}
+
+// Parse "Nombre Cantidad" → { nombre, cantidad }
+// e.g. "Soga 6", "Bandas de glúteos res. baja 2 / Ba..."
+function parseEdLine(line) {
+  if (!line) return null;
+  // Remove truncation artifacts like "/ Ba..."
+  const clean = line.replace(/\s*\/\s*\w.*$/, '').trim();
+  // Last token that's a number
+  const match = clean.match(/^(.*?)\s+(\d+)\s*$/);
+  if (!match) return null;
+  const nombre = normalizeItem(match[1].trim());
+  const cantidad = parseInt(match[2]);
+  if (!nombre || isNaN(cantidad)) return null;
+  return { nombre, cantidad };
+}
+
+// Aggregate EdSolicitados from filtered data
+function buildEdTotals(data) {
+  const totals = {};
+  CATALOGO.forEach(c => totals[c] = 0);
+  data.forEach(row => {
+    if (!row.EdSolicitados) return;
+    const parsed = parseEdLine(row.EdSolicitados);
+    if (parsed) totals[parsed.nombre] = (totals[parsed.nombre] || 0) + parsed.cantidad;
+  });
+  return totals;
+}
+
+// ── STATE
+let liveData = null;
+let charts   = {};
+
+// ── CONSTANTS
+const MUTED = '#9DA5A8';
+const GRID  = 'rgba(255,255,255,0.05)';
+const EXEC  = '#4CAF7D';
+const PROC  = '#FF5C33';
+const base  = { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} };
+const ax    = {
+  x: { ticks:{color:MUTED, font:{size:10, family:'Roboto'}}, grid:{display:false} },
+  y: { ticks:{color:MUTED, font:{size:10, family:'Roboto'}}, grid:{color:GRID} }
+};
+
+function activeData() { return liveData || RAW; }
+function destroyAll() { Object.values(charts).forEach(c => c.destroy()); charts = {}; }
+function showEmpty(id, show) {
+  const el = document.getElementById('empty-' + id);
+  const cv = document.getElementById('c-' + id);
+  if (!el || !cv) return;
+  el.style.display = show ? 'flex' : 'none';
+  cv.style.display = show ? 'none' : 'block';
+}
+function setStatus(html, cls) {
+  const el = document.getElementById('sync-status');
+  el.innerHTML = html;
+  el.className = 'sync-status ' + (cls || '');
+}
+
+// ── SYNC
+async function syncFromSheet() {
+  const btn = document.getElementById('btn-sync');
+  btn.disabled = true;
+  setStatus('<span class="spin"></span>&nbsp;Sincronizando...', '');
+  try {
+    const res = await fetch(SHEET_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (!json.ok || !json.data) throw new Error('Respuesta inesperada');
+    liveData = json.data;
+    // Populate supervisor dropdown
+    const sups = [...new Set(liveData.map(d => d.Supervisor).filter(Boolean))].sort();
+    const sel = document.getElementById('sup-filter');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Todos</option>' +
+      sups.map(s => '<option value="' + s + '"' + (s===current?' selected':'') + '>' + s + '</option>').join('');
+    const dates = liveData.map(d => d.date).filter(Boolean).sort();
+    if (dates.length) {
+      document.getElementById('date-from').value = dates[0];
+      document.getElementById('date-to').value   = dates[dates.length - 1];
+    }
+    const now = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+    setStatus('✓ ' + liveData.length + ' registros · ' + now, 'ok');
+    update();
+  } catch(e) {
+    setStatus('✗ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── UPDATE
+function update() {
+  const from = document.getElementById('date-from').value;
+  const to   = document.getElementById('date-to').value;
+  const sup  = document.getElementById('sup-filter').value;
+  const data = activeData()
+    .filter(d => d.date >= from && d.date <= to)
+    .filter(d => !sup || d.Supervisor === sup);
+  destroyAll();
+
+  // KPIs
+  const total   = data.length;
+  const exec    = data.filter(d => d.Estatus === 'Ejecutado').length;
+  const proc    = data.filter(d => d.Estatus === 'En proceso').length;
+  const edReqs  = data.filter(d => d.Sector === 'Elementos Deportivos').length;
+  const edEjec  = data.filter(d => d.Sector === 'Elementos Deportivos' && d.Estatus === 'Ejecutado').length;
+  const edSedes = new Set(data.filter(d => d.Sector === 'Elementos Deportivos').map(d => d.Sede)).size;
+
+  document.getElementById('k-total').textContent    = total;
+  document.getElementById('k-exec').textContent     = exec;
+  document.getElementById('k-proc').textContent     = proc;
+  document.getElementById('k-edeport').textContent  = edReqs;
+  document.getElementById('k-exec-pct').textContent  = total ? Math.round(exec/total*100) + '% del total' : '—';
+  document.getElementById('k-proc-pct').textContent  = total ? Math.round(proc/total*100) + '% del total' : '—';
+  document.getElementById('k-edeport-sub').textContent = edEjec + ' resueltos · ' + edSedes + (edSedes===1?' sede':' sedes');
+  document.getElementById('range-label').innerHTML  = 'Mostrando <strong>' + total + '</strong> requerimiento' + (total!==1?'s':'') + ' · ' + from + ' → ' + to;
+
+  // ED section
+  const edData = data.filter(d => d.Sector === 'Elementos Deportivos' && d.EdSolicitados);
+  document.getElementById('ed-section').style.display = edData.length > 0 ? 'block' : 'none';
+  if (edData.length > 0) renderEdChart(data);
+
+  // GRÁFICO 1 — Días (línea)
+  const byDay = data.reduce((m, d) => { m[d.date] = (m[d.date]||0)+1; return m; }, {});
+  const allDates = [];
+  if (from && to) {
+    let cur = new Date(from + 'T00:00:00');
+    const end = new Date(to + 'T00:00:00');
+    while (cur <= end) { allDates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  }
+  showEmpty('dias', total === 0);
+  if (total > 0) {
+    charts['dias'] = new Chart(document.getElementById('c-dias'), {
+      type: 'line',
+      data: {
+        labels: allDates.map(d => d.slice(5).replace('-','/')),
+        datasets: [{ data: allDates.map(d => byDay[d]||0), borderColor:PROC,
+          backgroundColor:'rgba(255,92,51,0.08)', fill:true, tension:0.4,
+          pointBackgroundColor:PROC, pointRadius:4, pointHoverRadius:6, borderWidth:2 }]
+      },
+      options: { ...base, scales: { x:{...ax.x}, y:{...ax.y, min:0, ticks:{...ax.y.ticks, stepSize:1}} } }
+    });
+  }
+
+  // GRÁFICO 2 — Donut áreas
+  const sectorMap = {};
+  data.forEach(d => { if (d.Sector) sectorMap[d.Sector] = (sectorMap[d.Sector]||0)+1; });
+  const sectorLabels = Object.keys(sectorMap).sort((a,b) => sectorMap[b]-sectorMap[a]);
+  const sectorVals   = sectorLabels.map(s => sectorMap[s]);
+  const DONUT_COLORS = ['#FF5C33','#4CAF7D','#5B9CF6','#A78BFA','#F5A623','#E879A0','#34D399','#FB923C'];
+  showEmpty('areas', sectorLabels.length === 0);
+  if (sectorLabels.length > 0) {
+    charts['areas'] = new Chart(document.getElementById('c-areas'), {
+      type: 'doughnut',
+      data: { labels:sectorLabels, datasets:[{ data:sectorVals,
+        backgroundColor:DONUT_COLORS.slice(0,sectorLabels.length), borderWidth:0, hoverOffset:6 }] },
+      options: { ...base, cutout:'62%', plugins: {
+        legend: { display:true, position:'right', labels: {
+          color:'#C9D1D3', font:{size:11,family:'Roboto'}, padding:12, boxWidth:10, boxHeight:10,
+          generateLabels: chart => {
+            const ds = chart.data.datasets[0];
+            const t = ds.data.reduce((a,b)=>a+b,0);
+            return chart.data.labels.map((label,i) => ({
+              text: label + '  ' + Math.round(ds.data[i]/t*100) + '%',
+              fillStyle: ds.backgroundColor[i], fontColor:'#C9D1D3', hidden:false, index:i
+            }));
+          }
+        }},
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' (' + Math.round(ctx.raw/total*100) + '%)' } }
+      }}
+    });
+  }
+
+  // GRÁFICO 3 — Sedes (todas)
+  const sedeExec  = ALL_SEDES.map(s => data.filter(d => d.Sede===s && d.Estatus==='Ejecutado').length);
+  const sedeProc  = ALL_SEDES.map(s => data.filter(d => d.Sede===s && d.Estatus==='En proceso').length);
+  const sedeTotal = ALL_SEDES.map((_,i) => sedeExec[i]+sedeProc[i]);
+  showEmpty('sede', false);
+  charts['sede'] = new Chart(document.getElementById('c-sede'), {
+    type: 'bar',
+    data: {
+      labels: ALL_SEDES.map(s => s.replace(' - ',' · ')),
+      datasets: [
+        { label:'Ejecutado',    data:sedeExec, backgroundColor:sedeExec.map((v,i)=>v>0?EXEC:(sedeTotal[i]===0?'rgba(255,255,255,0.04)':'transparent')), borderRadius:3, stack:'s' },
+        { label:'En proceso',   data:sedeProc, backgroundColor:sedeProc.map(v=>v>0?PROC:'transparent'), borderRadius:3, stack:'s' },
+        { label:'Sin reclamos', data:ALL_SEDES.map((_,i)=>sedeTotal[i]===0?0.15:0), backgroundColor:'rgba(255,255,255,0.04)', borderRadius:3, stack:'s' }
+      ]
+    },
+    options: { ...base,
+      scales: {
+        x: { ...ax.x, ticks:{...ax.x.ticks, autoSkip:false, maxRotation:35, font:{size:9}} },
+        y: { ...ax.y, min:0, ticks:{...ax.y.ticks, stepSize:1} }
+      },
+      plugins: { ...base.plugins,
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label==='Sin reclamos'?' Sin reclamos en el período':' '+ctx.dataset.label+': '+ctx.raw } }
+      }
+    }
+  });
+}
+
+// ── GRÁFICO ED — barras horizontales con todos los ítems del catálogo
+function renderEdChart(data) {
+  const totalsExec = {};
+  const totalsProc = {};
+  CATALOGO.forEach(c => { totalsExec[c] = 0; totalsProc[c] = 0; });
+
+  data.filter(d => d.Sector === 'Elementos Deportivos' && d.EdSolicitados).forEach(row => {
+    const parsed = parseEdLine(row.EdSolicitados);
+    if (!parsed) return;
+    if (row.Estatus === 'Ejecutado') totalsExec[parsed.nombre] = (totalsExec[parsed.nombre]||0) + parsed.cantidad;
+    else                             totalsProc[parsed.nombre] = (totalsProc[parsed.nombre]||0) + parsed.cantidad;
+  });
+
+  const container = document.getElementById('ed-results');
+  const maxVal = Math.max(...CATALOGO.map(c => (totalsExec[c]||0) + (totalsProc[c]||0)), 1);
+
+  container.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px">' +
+    CATALOGO.map(item => {
+      const ve  = totalsExec[item] || 0;
+      const vp  = totalsProc[item] || 0;
+      const vt  = ve + vp;
+      const pctE = (ve / maxVal * 100).toFixed(1);
+      const pctP = (vp / maxVal * 100).toFixed(1);
+      const tc  = vt > 0 ? 'var(--text)' : 'var(--muted)';
+      const vc  = vt > 0 ? 'var(--text)' : 'var(--muted)';
+      return '<div style="display:grid;grid-template-columns:180px 32px 1fr;align-items:center;gap:10px;margin-bottom:4px">' +
+        '<div style="font-size:11px;color:' + tc + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + item + '">' + item + '</div>' +
+        '<div style="font-size:13px;font-weight:700;color:' + vc + ';text-align:right">' + (vt || '') + '</div>' +
+        '<div style="background:rgba(255,255,255,0.04);border-radius:3px;height:8px;overflow:hidden;display:flex;cursor:default" title="Ejecutado: ' + ve + ' · En proceso: ' + vp + '">' +
+          '<div style="width:' + pctE + '%;height:100%;background:#4CAF7D"></div>' +
+          '<div style="width:' + pctP + '%;height:100%;background:#FF5C33"></div>' +
+        '</div></div>';
+    }).join('') +
+  '</div>' +
+  '<div style="display:flex;gap:14px;margin-top:.75rem">' +
+    '<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#4CAF7D;display:inline-block"></span>Ejecutado</span>' +
+    '<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#FF5C33;display:inline-block"></span>En proceso</span>' +
+  '</div>' +
+  '<p style="font-size:10px;color:var(--muted);margin-top:.5rem;letter-spacing:.04em">BASADO EN COLUMNA ELEMENTOS DEPORTIVOS SOLICITADOS · período seleccionado</p>';
+}
+
+// ── RESET & EVENTS
+function resetDates() {
+  const dates = activeData().map(d => d.date).filter(Boolean).sort();
+  document.getElementById('date-from').value = dates[0] || '2026-05-05';
+  document.getElementById('date-to').value   = dates[dates.length-1] || '2026-05-15';
+  document.getElementById('sup-filter').value = '';
+  update();
+}
+
+document.getElementById('date-from').addEventListener('change', update);
+document.getElementById('date-to').addEventListener('change', update);
+
+// Auto-sync robusto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => syncFromSheet());
+} else {
+  syncFromSheet();
+}
+</script>
+</body>
+</html>
