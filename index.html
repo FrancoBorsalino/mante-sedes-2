@@ -210,9 +210,10 @@
   /* CHARTS */
   .charts-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 12px;
   }
+  .card.full, .card[style*="grid-column: 1"] { grid-column: 1 / -1; }
   .card {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -328,20 +329,21 @@
       </div>
     </div>
 
-    <div class="card">
+    <!-- fila de 3 columnas -->
+    <div class="card" style="grid-column:span 1;min-width:0">
+      <div class="card-title">Sedes silenciosas · días sin reportar</div>
+      <div id="silent-sedes" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px"></div>
+    </div>
+
+    <div class="card" style="grid-column:span 1;min-width:0">
       <div class="card-title">Distribución por área</div>
-      <div class="chart-wrap" style="height:280px">
+      <div class="chart-wrap" style="height:260px">
         <canvas id="c-areas"></canvas>
         <div class="empty" id="empty-areas">Sin datos</div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">Sedes silenciosas · días sin reportar</div>
-      <div id="silent-sedes" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;padding-right:4px"></div>
-    </div>
-
-    <div class="card full" style="grid-column: unset">
+    <div class="card full">
       <div class="card-title">Requerimientos por sede · todas las sedes</div>
       <div class="legend">
         <span><span class="lsq" style="background:var(--exec)"></span>Ejecutado</span>
@@ -682,8 +684,17 @@ function renderEdChart(data) {
   const container = document.getElementById('ed-results');
   const maxVal = Math.max(...CATALOGO.map(c => (totalsExec[c]||0) + (totalsProc[c]||0)), 1);
 
-  container.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px">' +
-    CATALOGO.map(item => {
+  // Floating tooltip
+  let tip = document.getElementById('ed-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'ed-tip';
+    tip.style.cssText = 'position:fixed;background:#1e2027;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 10px;font-size:11px;color:#e8e6e0;pointer-events:none;display:none;z-index:999;line-height:1.6;font-family:Roboto,sans-serif';
+    document.body.appendChild(tip);
+  }
+
+  container.innerHTML = '<div id="ed-bars" style="display:flex;flex-direction:column;gap:6px">' +
+    CATALOGO.map((item, idx) => {
       const ve  = totalsExec[item] || 0;
       const vp  = totalsProc[item] || 0;
       const vt  = ve + vp;
@@ -691,11 +702,11 @@ function renderEdChart(data) {
       const pctP = (vp / maxVal * 100).toFixed(1);
       const tc  = vt > 0 ? 'var(--text)' : 'var(--muted)';
       const vc  = vt > 0 ? 'var(--text)' : 'var(--muted)';
-      return '<div style="display:grid;grid-template-columns:180px 32px 1fr;align-items:center;gap:10px;margin-bottom:4px">' +
-        '<div style="font-size:11px;color:' + tc + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + item + '">' + item + '</div>' +
+      return '<div style="display:grid;grid-template-columns:180px 32px 1fr;align-items:center;gap:10px">' +
+        '<div style="font-size:11px;color:' + tc + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item + '</div>' +
         '<div style="font-size:13px;font-weight:700;color:' + vc + ';text-align:right">' + (vt || '') + '</div>' +
-        '<div style="background:rgba(255,255,255,0.04);border-radius:3px;height:8px;overflow:hidden;display:flex;cursor:default" ' +
-        'title="✓ Ejecutado: ' + ve + '  ·  ⟳ En proceso: ' + vp + '">' +
+        '<div class="ed-bar" data-exec="' + ve + '" data-proc="' + vp + '" data-item="' + item + '" ' +
+          'style="background:rgba(255,255,255,0.04);border-radius:3px;height:10px;overflow:hidden;display:flex;cursor:default">' +
           '<div style="width:' + pctE + '%;height:100%;background:#4CAF7D"></div>' +
           '<div style="width:' + pctP + '%;height:100%;background:#FF5C33"></div>' +
         '</div></div>';
@@ -706,6 +717,19 @@ function renderEdChart(data) {
     '<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#FF5C33;display:inline-block"></span>En proceso</span>' +
   '</div>' +
   '<p style="font-size:10px;color:var(--muted);margin-top:.5rem;letter-spacing:.04em">BASADO EN COLUMNA ELEMENTOS DEPORTIVOS SOLICITADOS · período seleccionado</p>';
+
+  // Attach hover events
+  document.querySelectorAll('.ed-bar').forEach(bar => {
+    bar.addEventListener('mousemove', e => {
+      const ve = bar.dataset.exec;
+      const vp = bar.dataset.proc;
+      tip.innerHTML = '<span style="color:#4CAF7D">✓ Ejecutado: ' + ve + '</span><br><span style="color:#FF5C33">⟳ En proceso: ' + vp + '</span>';
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top  = (e.clientY - 10) + 'px';
+    });
+    bar.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
 }
 
 // ── RESET & EVENTS
