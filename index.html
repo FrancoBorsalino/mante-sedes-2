@@ -437,19 +437,23 @@ function normalizeItem(raw) {
   return null;
 }
 
-// Parse "Nombre Cantidad" → { nombre, cantidad }
-// e.g. "Soga 6", "Bandas de glúteos res. baja 2 / Ba..."
+// Parse "Nombre Cantidad" — soporta múltiples ítems separados por " / "
 function parseEdLine(line) {
   if (!line) return null;
-  // Remove truncation artifacts like "/ Ba..."
-  const clean = line.replace(/\s*\/\s*\w.*$/, '').trim();
-  // Last token that's a number
-  const match = clean.match(/^(.*?)\s+(\d+)\s*$/);
-  if (!match) return null;
-  const nombre = normalizeItem(match[1].trim());
-  const cantidad = parseInt(match[2]);
-  if (!nombre || isNaN(cantidad)) return null;
-  return { nombre, cantidad };
+  // Si hay múltiples ítems separados por " / ", devolvemos el primero que matchee
+  // pero procesamos todos en parseEdLines (plural)
+  const clean = line.replace(/\s*\/\s*/g, '|||').trim();
+  const parts = clean.split('|||');
+  const results = [];
+  parts.forEach(part => {
+    part = part.trim();
+    const match = part.match(/^(.*?)\s+(\d+)\s*$/);
+    if (!match) return;
+    const nombre = normalizeItem(match[1].trim());
+    const cantidad = parseInt(match[2]);
+    if (nombre && !isNaN(cantidad)) results.push({ nombre, cantidad });
+  });
+  return results.length ? results : null;
 }
 
 // Aggregate EdSolicitados from filtered data
@@ -698,8 +702,10 @@ function renderEdChart(data) {
   data.filter(d => d.Sector === 'Elementos Deportivos' && d.EdSolicitados).forEach(row => {
     const parsed = parseEdLine(row.EdSolicitados);
     if (!parsed) return;
-    if (row.Estatus === 'Ejecutado') totalsExec[parsed.nombre] = (totalsExec[parsed.nombre]||0) + parsed.cantidad;
-    else                             totalsProc[parsed.nombre] = (totalsProc[parsed.nombre]||0) + parsed.cantidad;
+    parsed.forEach(({ nombre, cantidad }) => {
+      if (row.Estatus === 'Ejecutado') totalsExec[nombre] = (totalsExec[nombre]||0) + cantidad;
+      else                             totalsProc[nombre] = (totalsProc[nombre]||0) + cantidad;
+    });
   });
 
   const container = document.getElementById('ed-results');
