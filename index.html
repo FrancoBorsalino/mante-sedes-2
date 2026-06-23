@@ -389,7 +389,7 @@ const CATALOGO_INDOOR = [
 ];
 
 const CATALOGO_PILATES = [
-  'Bloque','Mancuernas','Tobilleras','Pelota','Mat','Aro','Slider'
+  'Bloque','Mancuernas','Tobilleras','Pelota','Mat','Aro','Slider','Roll','Correa'
 ];
 
 const CATALOGO = [...CATALOGO_INDOOR, ...CATALOGO_PILATES];
@@ -435,7 +435,9 @@ const ALIASES = {
   'pelota': 'Pelota', 'bola': 'Pelota',
   'mat': 'Mat',
   'aro': 'Aro',
-  'slider': 'Slider', 'deslizante': 'Slider'
+  'slider': 'Slider', 'deslizante': 'Slider',
+  'roll': 'Roll',
+  'correa': 'Correa'
 };
 
 function normalizeItem(raw) {
@@ -757,7 +759,7 @@ function renderEdChart(data) {
     '<div id="ed-bars-indoor" style="display:flex;flex-direction:column;gap:6px;margin-bottom:1.25rem">' +
     CATALOGO_INDOOR.map(item => renderEdBarRow(item, totalsExec, totalsProc, maxVal)).join('') +
     '</div>' +
-    '<p style="font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:6px">Pilates</p>' +
+    '<p style="font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:6px">Pilates / Yoga</p>' +
     '<div id="ed-bars-pilates" style="display:flex;flex-direction:column;gap:6px">' +
     CATALOGO_PILATES.map(item => renderEdBarRow(item, totalsExec, totalsProc, maxVal)).join('') +
     '</div>' +
