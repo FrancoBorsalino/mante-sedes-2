@@ -162,7 +162,7 @@
   /* KPI ROW */
   .kpi-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr) 1.2fr;
+    grid-template-columns: repeat(3, 1fr) 1.3fr 1.2fr;
     gap: 10px;
     margin-bottom: 1.75rem;
   }
@@ -288,6 +288,10 @@
     <select id="sup-filter" onchange="update()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:11px;padding:.38rem .7rem;border-radius:4px;outline:none;cursor:pointer;color-scheme:dark">
       <option value="">Todos</option>
     </select>
+    <span class="filter-label" style="margin-left:.5rem">Sede</span>
+    <select id="sede-filter" onchange="update()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:11px;padding:.38rem .7rem;border-radius:4px;outline:none;cursor:pointer;color-scheme:dark;max-width:160px">
+      <option value="">Todas</option>
+    </select>
     <button class="btn-reset" onclick="resetDates()">Reset</button>
   </div>
 </div>
@@ -311,11 +315,24 @@
       <div class="kpi-val orange" id="k-proc">—</div>
       <div class="kpi-sub" id="k-proc-pct">—</div>
     </div>
+    <div class="kpi">
+      <div class="kpi-label">Postergados / Pendientes</div>
+      <div style="display:flex;align-items:baseline;gap:14px">
+        <div>
+          <div class="kpi-val" id="k-poster" style="color:#1a1a1a;-webkit-text-stroke:1px #555;font-size:2.1rem">—</div>
+          <div class="kpi-sub" style="margin-top:2px">postergados</div>
+        </div>
+        <div>
+          <div class="kpi-val" id="k-pend" style="color:#E8332E;font-size:2.1rem">—</div>
+          <div class="kpi-sub" style="margin-top:2px">pendientes</div>
+        </div>
+      </div>
+    </div>
     <div class="kpi kpi-alert">
-      <div class="kpi-label">Elementos Deportivos</div>
+      <div class="kpi-label">Elementos Deportivos · pendientes</div>
       <div class="kpi-val" id="k-edeport">—</div>
       <div class="kpi-sub" id="k-edeport-sub">—</div>
-      <div class="kpi-alert-tag">Gestión Compras</div>
+      <a href="#ed-section" class="kpi-alert-tag" style="text-decoration:none;cursor:pointer">Gestión Compras</a>
     </div>
   </div>
 
@@ -330,17 +347,15 @@
     </div>
 
     <!-- fila de 3 columnas -->
-    <div class="card" style="grid-column:span 1;min-width:0">
+    <div class="card general-only" style="grid-column:span 1;min-width:0">
       <div class="card-title">Sedes silenciosas · días sin reportar</div>
       <div id="silent-sedes" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px"></div>
     </div>
 
     <div class="card" style="grid-column:span 1;min-width:0">
       <div class="card-title">Distribución por área</div>
-      <div class="chart-wrap" style="height:260px">
-        <canvas id="c-areas"></canvas>
-        <div class="empty" id="empty-areas">Sin datos</div>
-      </div>
+      <div id="treemap-areas" style="height:260px;display:flex;flex-wrap:wrap;gap:3px;align-items:stretch"></div>
+      <div class="empty" id="empty-areas" style="display:none">Sin datos</div>
     </div>
 
     <div class="card" style="grid-column:span 1;min-width:0">
@@ -348,11 +363,13 @@
       <div id="top-problemas" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px"></div>
     </div>
 
-    <div class="card full">
+    <div class="card full general-only">
       <div class="card-title">Requerimientos por sede · todas las sedes</div>
       <div class="legend">
         <span><span class="lsq" style="background:var(--exec)"></span>Ejecutado</span>
         <span><span class="lsq" style="background:var(--orange)"></span>En proceso</span>
+        <span><span class="lsq" style="background:#3a3a3a;border:1px solid #555"></span>Postergado</span>
+        <span><span class="lsq" style="background:#E8332E"></span>Pendiente</span>
         <span><span class="lsq" style="background:var(--bg3);border:1px solid var(--border)"></span>Sin reclamos</span>
       </div>
       <div class="chart-wrap h340">
@@ -381,12 +398,18 @@ const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzDUNaqW3_KQZmn7lHpHV
 const ALL_SEDES = ["1 - RECOLETA", "2 - CAÑITAS II", "3 - PALERMO SOHO", "4 - BARRIO NORTE", "5 - GUTIERREZ", "6 - CABILDO", "7 - CABALLITO", "8 - SANTA FE", "9 - ALMAGRO", "10 - URQUIZA", "11 - SCALABRINI", "12 - JUNCAL", "13 - COLEGIALES", "14 - CARRANZA", "15 - HOLMBERG", "18 - PALERMO CHICO", "19 - OLIVOS", "23 - P. CENTENARIO", "24 - TRIUNVIRATO", "25 - DIRECTORIO", "26 - MANSILLA", "30 - NUÑEZ", "31 - MARTINEZ"];
 const RAW = [{"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-06", "Supervisor": "Débora", "Sede": "10 - URQUIZA", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-08", "Supervisor": "Débora", "Sede": "10 - URQUIZA", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-08", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": "Active Clean"}, {"date": "2026-05-08", "Supervisor": "Bautista", "Sede": "14 - CARRANZA", "Sector": "Limpieza", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-08", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Fachada", "Estatus": "Ejecutado", "Proveedor": "Cerrajería Marina"}, {"date": "2026-05-08", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-09", "Supervisor": "Angel", "Sede": "1 - RECOLETA", "Sector": "Paisajismo", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-11", "Supervisor": "Valentin", "Sede": "15 - HOLMBERG", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-11", "Supervisor": "Diego", "Sede": "5 - GUTIERREZ", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-11", "Supervisor": "Angel", "Sede": "1 - RECOLETA", "Sector": "Fachada", "Estatus": "Ejecutado", "Proveedor": "Cerrajería Marina"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "7 - CABALLITO", "Sector": "Limpieza", "Estatus": "Ejecutado", "Proveedor": "Active Clean"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "7 - CABALLITO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "25 - DIRECTORIO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "25 - DIRECTORIO", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Angel", "Sede": "13 - COLEGIALES", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Angel", "Sede": "13 - COLEGIALES", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Paisajismo", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Diego Hiden"}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "3 - PALERMO SOHO", "Sector": "Recepción", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "8 - SANTA FE", "Sector": "Recepción", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "3 - PALERMO SOHO", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "3 - PALERMO SOHO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Valeria", "Sede": "26 - MANSILLA", "Sector": "Limpieza", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Lucas", "Sede": "11 - SCALABRINI", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-14", "Supervisor": "Angel", "Sede": "13 - COLEGIALES", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-14", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "11 - SCALABRINI", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-14", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Diego Hiden"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "11 - SCALABRINI", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Fachada", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "12 - JUNCAL", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": "Cristales Coronel"}, {"date": "2026-05-15", "Supervisor": "Lucas", "Sede": "23 - P. CENTENARIO", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": "Gustavo"}, {"date": "2026-05-15", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-15", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-15", "Supervisor": "Juliana", "Sede": "6 - CABILDO", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": null}];
 
-const CATALOGO = [
+const CATALOGO_INDOOR = [
   'Box de madera','Banda Naranja','Banda Negra','Pelotas 6kg','Discos 5kg',
   'Bandas de glúteos res. baja','Bandas de glúteos res. media','Bandas de glúteos res. alta',
   'Corebag','Soga','Juego de anillas','Juego de miniparalelas',
   'Chalecos 10kg','Colchonetas','Cinturón de lastre','Magnesio 1KG'
 ];
+
+const CATALOGO_PILATES = [
+  'Bloque','Mancuernas','Tobilleras','Pelota','Mat','Aro','Slider','Roll','Correa'
+];
+
+const CATALOGO = [...CATALOGO_INDOOR, ...CATALOGO_PILATES];
 
 const PROBLEMAS = {
   'Humedad / Filtraciones': ['humedad', 'filtrac', 'gotea', 'agua'],
@@ -421,7 +444,17 @@ const ALIASES = {
   'chalecos 10kg': 'Chalecos 10kg', 'chaleco 10kg': 'Chalecos 10kg', 'chalecos': 'Chalecos 10kg',
   'colchonetas': 'Colchonetas', 'colchoneta': 'Colchonetas',
   'cinturón de lastre': 'Cinturón de lastre', 'cinturones': 'Cinturón de lastre',
-  'magnesio 1kg': 'Magnesio 1KG', 'magnesio 1kg': 'Magnesio 1KG'
+  'magnesio 1kg': 'Magnesio 1KG', 'magnesio 1kg': 'Magnesio 1KG',
+  // Pilates
+  'bloque': 'Bloque', 'ladrillo': 'Bloque', 'cuadrado': 'Bloque',
+  'mancuernas': 'Mancuernas', 'mancuerna': 'Mancuernas', 'pesas': 'Mancuernas', 'pesa': 'Mancuernas',
+  'tobilleras': 'Tobilleras', 'tobillera': 'Tobilleras',
+  'pelota': 'Pelota', 'bola': 'Pelota',
+  'mat': 'Mat',
+  'aro': 'Aro',
+  'slider': 'Slider', 'deslizante': 'Slider',
+  'roll': 'Roll',
+  'correa': 'Correa'
 };
 
 function normalizeItem(raw) {
@@ -477,6 +510,8 @@ const MUTED = '#9DA5A8';
 const GRID  = 'rgba(255,255,255,0.05)';
 const EXEC  = '#4CAF7D';
 const PROC  = '#FF5C33';
+const POSTER = '#3a3a3a';
+const PEND   = '#E8332E';
 const base  = { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} };
 const ax    = {
   x: { ticks:{color:MUTED, font:{size:10, family:'Roboto'}}, grid:{display:false} },
@@ -515,6 +550,11 @@ async function syncFromSheet() {
     const current = sel.value;
     sel.innerHTML = '<option value="">Todos</option>' +
       sups.map(s => '<option value="' + s + '"' + (s===current?' selected':'') + '>' + s + '</option>').join('');
+    // Populate sede dropdown (siempre con ALL_SEDES, sede sea cual sea el dato)
+    const sedeSel = document.getElementById('sede-filter');
+    const sedeCurrent = sedeSel.value;
+    sedeSel.innerHTML = '<option value="">Todas</option>' +
+      ALL_SEDES.map(s => '<option value="' + s + '"' + (s===sedeCurrent?' selected':'') + '>' + s + '</option>').join('');
     const dates = liveData.map(d => d.date).filter(Boolean).sort();
     if (dates.length) {
       document.getElementById('date-from').value = dates[0];
@@ -535,26 +575,36 @@ function update() {
   const from = document.getElementById('date-from').value;
   const to   = document.getElementById('date-to').value;
   const sup  = document.getElementById('sup-filter').value;
+  const sedeFiltro = document.getElementById('sede-filter').value;
   const data = activeData()
     .filter(d => d.date >= from && d.date <= to)
-    .filter(d => !sup || d.Supervisor === sup);
+    .filter(d => !sup || d.Supervisor === sup)
+    .filter(d => !sedeFiltro || d.Sede === sedeFiltro);
   destroyAll();
+
+  // Mostrar/ocultar paneles que solo tienen sentido en vista general (todas las sedes)
+  const generalOnly = document.querySelectorAll('.general-only');
+  generalOnly.forEach(el => { el.style.display = sedeFiltro ? 'none' : ''; });
 
   // KPIs
   const total   = data.length;
   const exec    = data.filter(d => d.Estatus === 'Ejecutado').length;
   const proc    = data.filter(d => d.Estatus === 'En proceso').length;
+  const poster  = data.filter(d => d.Estatus === 'Postergado').length;
+  const pend    = data.filter(d => d.Estatus === 'Pendiente').length;
   const edReqs  = data.filter(d => d.Sector === 'Elementos Deportivos').length;
-  const edEjec  = data.filter(d => d.Sector === 'Elementos Deportivos' && d.Estatus === 'Ejecutado').length;
+  const edProc  = data.filter(d => d.Sector === 'Elementos Deportivos' && d.Estatus === 'En proceso').length;
   const edSedes = new Set(data.filter(d => d.Sector === 'Elementos Deportivos').map(d => d.Sede)).size;
 
   document.getElementById('k-total').textContent    = total;
   document.getElementById('k-exec').textContent     = exec;
   document.getElementById('k-proc').textContent     = proc;
-  document.getElementById('k-edeport').textContent  = edReqs;
+  document.getElementById('k-edeport').textContent  = edProc;
   document.getElementById('k-exec-pct').textContent  = total ? Math.round(exec/total*100) + '% del total' : '—';
   document.getElementById('k-proc-pct').textContent  = total ? Math.round(proc/total*100) + '% del total' : '—';
-  document.getElementById('k-edeport-sub').textContent = edEjec + ' resueltos · ' + edSedes + (edSedes===1?' sede':' sedes');
+  document.getElementById('k-poster').textContent  = poster;
+  document.getElementById('k-pend').textContent    = pend;
+  document.getElementById('k-edeport-sub').textContent = edReqs + ' total · ' + edSedes + (edSedes===1?' sede':' sedes');
   document.getElementById('range-label').innerHTML  = 'Mostrando <strong>' + total + '</strong> requerimiento' + (total!==1?'s':'') + ' · ' + from + ' → ' + to;
 
   // ED section
@@ -587,129 +637,131 @@ function update() {
     });
   }
 
-  // GRÁFICO 2 — Radar áreas
+  // GRÁFICO 2 — Treemap áreas
   const sectorMap = {};
   data.forEach(d => { if (d.Sector) sectorMap[d.Sector] = (sectorMap[d.Sector]||0)+1; });
   const sectorLabels = Object.keys(sectorMap).sort((a,b) => sectorMap[b]-sectorMap[a]);
   const sectorVals   = sectorLabels.map(s => sectorMap[s]);
-  showEmpty('areas', sectorLabels.length === 0);
-  if (sectorLabels.length > 0) {
-    charts['areas'] = new Chart(document.getElementById('c-areas'), {
-      type: 'radar',
+  renderTreemapAreas(sectorLabels, sectorVals, total);
+
+  // SEDES SILENCIOSAS — días desde último reporte (usa todos los datos, no filtra por período). Solo en vista general.
+  if (!sedeFiltro) {
+    const allData = activeData();
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const lastReport = {};
+    allData.forEach(d => {
+      if (!d.Sede || !d.date) return;
+      if (!lastReport[d.Sede] || d.date > lastReport[d.Sede]) lastReport[d.Sede] = d.date;
+    });
+    const silentEl = document.getElementById('silent-sedes');
+    const sedesSilent = ALL_SEDES.map(sede => {
+      const last = lastReport[sede];
+      if (!last) return { sede, dias: null };
+      const diff = Math.floor((today - new Date(last + 'T00:00:00')) / 86400000);
+      return { sede, dias: diff, last };
+    }).sort((a,b) => {
+      if (a.dias === null && b.dias === null) return 0;
+      if (a.dias === null) return 1;
+      if (b.dias === null) return -1;
+      return b.dias - a.dias;
+    });
+
+    silentEl.innerHTML = sedesSilent.map(({ sede, dias, last }) => {
+      let color, badge;
+      if (dias === null) {
+        color = 'var(--muted)'; badge = 'Sin reportes';
+      } else if (dias === 0) {
+        color = '#4CAF7D'; badge = 'Hoy';
+      } else if (dias <= 7) {
+        color = '#4CAF7D'; badge = dias + 'd';
+      } else if (dias <= 14) {
+        color = '#F5A623'; badge = dias + 'd';
+      } else {
+        color = '#FF5C33'; badge = dias + 'd';
+      }
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem .5rem;border-radius:4px;background:rgba(255,255,255,0.03)">' +
+        '<span style="font-size:11px;color:var(--text)">' + sede.replace(' - ', ' · ') + '</span>' +
+        '<span style="font-size:11px;font-weight:700;color:' + color + ';min-width:48px;text-align:right">' + badge + '</span>' +
+      '</div>';
+    }).join('');
+
+    // GRÁFICO 3 — Sedes (todas)
+    const sedeExec   = ALL_SEDES.map(s => data.filter(d => d.Sede===s && d.Estatus==='Ejecutado').length);
+    const sedeProc   = ALL_SEDES.map(s => data.filter(d => d.Sede===s && d.Estatus==='En proceso').length);
+    const sedePoster = ALL_SEDES.map(s => data.filter(d => d.Sede===s && d.Estatus==='Postergado').length);
+    const sedePend   = ALL_SEDES.map(s => data.filter(d => d.Sede===s && d.Estatus==='Pendiente').length);
+    const sedeTotal  = ALL_SEDES.map((_,i) => sedeExec[i]+sedeProc[i]+sedePoster[i]+sedePend[i]);
+    showEmpty('sede', false);
+    charts['sede'] = new Chart(document.getElementById('c-sede'), {
+      type: 'bar',
       data: {
-        labels: sectorLabels,
-        datasets: [{
-          data: sectorVals,
-          backgroundColor: 'rgba(255,92,51,0.15)',
-          borderColor: '#FF5C33',
-          borderWidth: 2,
-          pointBackgroundColor: '#FF5C33',
-          pointRadius: 4,
-          pointHoverRadius: 6
-        }]
+        labels: ALL_SEDES.map(s => s.replace(' - ',' · ')),
+        datasets: [
+          { label:'Ejecutado',    data:sedeExec,   backgroundColor:sedeExec.map((v,i)=>v>0?EXEC:(sedeTotal[i]===0?'rgba(255,255,255,0.04)':'transparent')), borderRadius:3, stack:'s' },
+          { label:'En proceso',   data:sedeProc,   backgroundColor:sedeProc.map(v=>v>0?PROC:'transparent'), borderRadius:3, stack:'s' },
+          { label:'Postergado',   data:sedePoster, backgroundColor:sedePoster.map(v=>v>0?POSTER:'transparent'), borderRadius:3, stack:'s' },
+          { label:'Pendiente',    data:sedePend,   backgroundColor:sedePend.map(v=>v>0?PEND:'transparent'), borderRadius:3, stack:'s' },
+          { label:'Sin reclamos', data:ALL_SEDES.map((_,i)=>sedeTotal[i]===0?0.15:0), backgroundColor:'rgba(255,255,255,0.04)', borderRadius:3, stack:'s' }
+        ]
       },
       options: { ...base,
         scales: {
-          r: {
-            ticks: { color: MUTED, font:{size:9,family:'Roboto'}, backdropColor:'transparent', stepSize:1 },
-            grid:  { color: 'rgba(255,255,255,0.07)' },
-            angleLines: { color: 'rgba(255,255,255,0.07)' },
-            pointLabels: { color: '#C9D1D3', font:{size:10,family:'Roboto'} }
-          }
+          x: { ...ax.x, ticks:{...ax.x.ticks, autoSkip:false, maxRotation:35, font:{size:9}} },
+          y: { ...ax.y, min:0, ticks:{...ax.y.ticks, stepSize:1} }
         },
-        plugins: {
-          ...base.plugins,
-          tooltip: { callbacks: { label: ctx => ' ' + ctx.raw + ' requerimientos (' + Math.round(ctx.raw/total*100) + '%)' } }
+        plugins: { ...base.plugins,
+          tooltip: { callbacks: { label: ctx => ctx.dataset.label==='Sin reclamos'?' Sin reclamos en el período':' '+ctx.dataset.label+': '+ctx.raw } }
         }
       }
     });
   }
+}
 
-  // SEDES SILENCIOSAS — días desde último reporte (usa todos los datos, no filtra por período)
-  const allData = activeData();
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const lastReport = {};
-  allData.forEach(d => {
-    if (!d.Sede || !d.date) return;
-    if (!lastReport[d.Sede] || d.date > lastReport[d.Sede]) lastReport[d.Sede] = d.date;
-  });
-  const silentEl = document.getElementById('silent-sedes');
-  const sedesSilent = ALL_SEDES.map(sede => {
-    const last = lastReport[sede];
-    if (!last) return { sede, dias: null };
-    const diff = Math.floor((today - new Date(last + 'T00:00:00')) / 86400000);
-    return { sede, dias: diff, last };
-  }).sort((a,b) => {
-    if (a.dias === null && b.dias === null) return 0;
-    if (a.dias === null) return 1;
-    if (b.dias === null) return -1;
-    return b.dias - a.dias;
-  });
-
-  silentEl.innerHTML = sedesSilent.map(({ sede, dias, last }) => {
-    let color, badge;
-    if (dias === null) {
-      color = 'var(--muted)'; badge = 'Sin reportes';
-    } else if (dias === 0) {
-      color = '#4CAF7D'; badge = 'Hoy';
-    } else if (dias <= 7) {
-      color = '#4CAF7D'; badge = dias + 'd';
-    } else if (dias <= 14) {
-      color = '#F5A623'; badge = dias + 'd';
-    } else {
-      color = '#FF5C33'; badge = dias + 'd';
-    }
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem .5rem;border-radius:4px;background:rgba(255,255,255,0.03)">' +
-      '<span style="font-size:11px;color:var(--text)">' + sede.replace(' - ', ' · ') + '</span>' +
-      '<span style="font-size:11px;font-weight:700;color:' + color + ';min-width:48px;text-align:right">' + badge + '</span>' +
-    '</div>';
-  }).join('');
-
-  // GRÁFICO 3 — Sedes (todas)
-  const sedeExec  = ALL_SEDES.map(s => data.filter(d => d.Sede===s && d.Estatus==='Ejecutado').length);
-  const sedeProc  = ALL_SEDES.map(s => data.filter(d => d.Sede===s && d.Estatus==='En proceso').length);
-  const sedeTotal = ALL_SEDES.map((_,i) => sedeExec[i]+sedeProc[i]);
-  showEmpty('sede', false);
-  charts['sede'] = new Chart(document.getElementById('c-sede'), {
-    type: 'bar',
-    data: {
-      labels: ALL_SEDES.map(s => s.replace(' - ',' · ')),
-      datasets: [
-        { label:'Ejecutado',    data:sedeExec, backgroundColor:sedeExec.map((v,i)=>v>0?EXEC:(sedeTotal[i]===0?'rgba(255,255,255,0.04)':'transparent')), borderRadius:3, stack:'s' },
-        { label:'En proceso',   data:sedeProc, backgroundColor:sedeProc.map(v=>v>0?PROC:'transparent'), borderRadius:3, stack:'s' },
-        { label:'Sin reclamos', data:ALL_SEDES.map((_,i)=>sedeTotal[i]===0?0.15:0), backgroundColor:'rgba(255,255,255,0.04)', borderRadius:3, stack:'s' }
-      ]
-    },
-    options: { ...base,
-      scales: {
-        x: { ...ax.x, ticks:{...ax.x.ticks, autoSkip:false, maxRotation:35, font:{size:9}} },
-        y: { ...ax.y, min:0, ticks:{...ax.y.ticks, stepSize:1} }
-      },
-      plugins: { ...base.plugins,
-        tooltip: { callbacks: { label: ctx => ctx.dataset.label==='Sin reclamos'?' Sin reclamos en el período':' '+ctx.dataset.label+': '+ctx.raw } }
-      }
-    }
-  });
+// ── HELPER: renderiza una fila de barra (item, exec, proc, poster, pend)
+function renderEdBarRow(item, totals, maxVal) {
+  const ve = totals.exec[item]   || 0;
+  const vp = totals.proc[item]   || 0;
+  const vpo= totals.poster[item] || 0;
+  const vpe= totals.pend[item]   || 0;
+  const vt = ve + vp + vpo + vpe;
+  const pE  = (ve  / maxVal * 100).toFixed(1);
+  const pP  = (vp  / maxVal * 100).toFixed(1);
+  const pPo = (vpo / maxVal * 100).toFixed(1);
+  const pPe = (vpe / maxVal * 100).toFixed(1);
+  const tc  = vt > 0 ? 'var(--text)' : 'var(--muted)';
+  return '<div style="display:grid;grid-template-columns:180px 32px 1fr;align-items:center;gap:10px">' +
+    '<div style="font-size:11px;color:' + tc + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item + '</div>' +
+    '<div style="font-size:13px;font-weight:700;color:' + tc + ';text-align:right">' + (vt || '') + '</div>' +
+    '<div class="ed-bar" data-exec="' + ve + '" data-proc="' + vp + '" data-poster="' + vpo + '" data-pend="' + vpe + '" data-item="' + item + '" ' +
+      'style="background:rgba(255,255,255,0.04);border-radius:3px;height:10px;overflow:hidden;display:flex;cursor:default">' +
+      '<div style="width:' + pE + '%;height:100%;background:#4CAF7D"></div>' +
+      '<div style="width:' + pP + '%;height:100%;background:#FF5C33"></div>' +
+      '<div style="width:' + pPo + '%;height:100%;background:#3a3a3a"></div>' +
+      '<div style="width:' + pPe + '%;height:100%;background:#E8332E"></div>' +
+    '</div></div>';
 }
 
 // ── GRÁFICO ED — barras horizontales con todos los ítems del catálogo
 function renderEdChart(data) {
-  const totalsExec = {};
-  const totalsProc = {};
-  CATALOGO.forEach(c => { totalsExec[c] = 0; totalsProc[c] = 0; });
+  const totals = {
+    exec:   {}, proc: {}, poster: {}, pend: {}
+  };
+  CATALOGO.forEach(c => { totals.exec[c]=0; totals.proc[c]=0; totals.poster[c]=0; totals.pend[c]=0; });
 
   data.filter(d => d.Sector === 'Elementos Deportivos' && d.EdSolicitados).forEach(row => {
     const parsed = parseEdLine(row.EdSolicitados);
     if (!parsed) return;
     parsed.forEach(({ nombre, cantidad }) => {
-      if (row.Estatus === 'Ejecutado') totalsExec[nombre] = (totalsExec[nombre]||0) + cantidad;
-      else                             totalsProc[nombre] = (totalsProc[nombre]||0) + cantidad;
+      if      (row.Estatus === 'Ejecutado')  totals.exec[nombre]   = (totals.exec[nombre]||0) + cantidad;
+      else if (row.Estatus === 'Postergado') totals.poster[nombre] = (totals.poster[nombre]||0) + cantidad;
+      else if (row.Estatus === 'Pendiente')  totals.pend[nombre]   = (totals.pend[nombre]||0) + cantidad;
+      else                                   totals.proc[nombre]   = (totals.proc[nombre]||0) + cantidad;
     });
   });
 
   const container = document.getElementById('ed-results');
-  const maxVal = Math.max(...CATALOGO.map(c => (totalsExec[c]||0) + (totalsProc[c]||0)), 1);
+  const maxVal = Math.max(...CATALOGO.map(c => (totals.exec[c]||0) + (totals.proc[c]||0) + (totals.poster[c]||0) + (totals.pend[c]||0)), 1);
 
   // Floating tooltip
   let tip = document.getElementById('ed-tip');
@@ -720,43 +772,69 @@ function renderEdChart(data) {
     document.body.appendChild(tip);
   }
 
-  container.innerHTML = '<div id="ed-bars" style="display:flex;flex-direction:column;gap:6px">' +
-    CATALOGO.map((item, idx) => {
-      const ve  = totalsExec[item] || 0;
-      const vp  = totalsProc[item] || 0;
-      const vt  = ve + vp;
-      const pctE = (ve / maxVal * 100).toFixed(1);
-      const pctP = (vp / maxVal * 100).toFixed(1);
-      const tc  = vt > 0 ? 'var(--text)' : 'var(--muted)';
-      const vc  = vt > 0 ? 'var(--text)' : 'var(--muted)';
-      return '<div style="display:grid;grid-template-columns:180px 32px 1fr;align-items:center;gap:10px">' +
-        '<div style="font-size:11px;color:' + tc + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item + '</div>' +
-        '<div style="font-size:13px;font-weight:700;color:' + vc + ';text-align:right">' + (vt || '') + '</div>' +
-        '<div class="ed-bar" data-exec="' + ve + '" data-proc="' + vp + '" data-item="' + item + '" ' +
-          'style="background:rgba(255,255,255,0.04);border-radius:3px;height:10px;overflow:hidden;display:flex;cursor:default">' +
-          '<div style="width:' + pctE + '%;height:100%;background:#4CAF7D"></div>' +
-          '<div style="width:' + pctP + '%;height:100%;background:#FF5C33"></div>' +
-        '</div></div>';
-    }).join('') +
-  '</div>' +
-  '<div style="display:flex;gap:14px;margin-top:.75rem">' +
+  container.innerHTML =
+    '<p style="font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:6px">Indoor</p>' +
+    '<div id="ed-bars-indoor" style="display:flex;flex-direction:column;gap:6px;margin-bottom:1.25rem">' +
+    CATALOGO_INDOOR.map(item => renderEdBarRow(item, totals, maxVal)).join('') +
+    '</div>' +
+    '<p style="font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:6px">Pilates / Yoga</p>' +
+    '<div id="ed-bars-pilates" style="display:flex;flex-direction:column;gap:6px">' +
+    CATALOGO_PILATES.map(item => renderEdBarRow(item, totals, maxVal)).join('') +
+    '</div>' +
+  '<div style="display:flex;gap:14px;margin-top:.75rem;flex-wrap:wrap">' +
     '<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#4CAF7D;display:inline-block"></span>Ejecutado</span>' +
     '<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#FF5C33;display:inline-block"></span>En proceso</span>' +
+    '<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#3a3a3a;border:1px solid #555;display:inline-block"></span>Postergado</span>' +
+    '<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)"><span style="width:9px;height:9px;border-radius:2px;background:#E8332E;display:inline-block"></span>Pendiente</span>' +
   '</div>' +
   '<p style="font-size:10px;color:var(--muted);margin-top:.5rem;letter-spacing:.04em">BASADO EN COLUMNA ELEMENTOS DEPORTIVOS SOLICITADOS · período seleccionado</p>';
 
   // Attach hover events
   document.querySelectorAll('.ed-bar').forEach(bar => {
     bar.addEventListener('mousemove', e => {
-      const ve = bar.dataset.exec;
-      const vp = bar.dataset.proc;
-      tip.innerHTML = '<span style="color:#4CAF7D">✓ Ejecutado: ' + ve + '</span><br><span style="color:#FF5C33">⟳ En proceso: ' + vp + '</span>';
+      const ve = bar.dataset.exec, vp = bar.dataset.proc, vpo = bar.dataset.poster, vpe = bar.dataset.pend;
+      tip.innerHTML = '<span style="color:#4CAF7D">✓ Ejecutado: ' + ve + '</span><br>' +
+        '<span style="color:#FF5C33">⟳ En proceso: ' + vp + '</span><br>' +
+        '<span style="color:#999">⏸ Postergado: ' + vpo + '</span><br>' +
+        '<span style="color:#E8332E">⚠ Pendiente: ' + vpe + '</span>';
       tip.style.display = 'block';
       tip.style.left = (e.clientX + 12) + 'px';
       tip.style.top  = (e.clientY - 10) + 'px';
     });
     bar.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
   });
+}
+
+// ── TREEMAP DISTRIBUCIÓN POR ÁREA ────────────────────────────────────────────
+function renderTreemapAreas(labels, vals, total) {
+  const el = document.getElementById('treemap-areas');
+  const emptyEl = document.getElementById('empty-areas');
+  if (!labels.length) {
+    el.innerHTML = '';
+    emptyEl.style.display = 'flex';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  const colors = ['#FF5C33','#4CAF7D','#5B9CF6','#A78BFA','#F5A623','#E879A0','#34D399','#FB923C','#9DA5A8'];
+  const sumVal = vals.reduce((a,b)=>a+b,0);
+
+  // Simple proporción por área usando flex-grow (no es un treemap geométrico exacto,
+  // pero da el mismo efecto visual de "rectángulos proporcionales al volumen")
+  el.innerHTML = labels.map((label, i) => {
+    const pct = (vals[i] / sumVal * 100);
+    const color = colors[i % colors.length];
+    // tamaño de fuente proporcional al área para que los grandes se destaquen
+    const fontBig = pct > 18 ? '15px' : (pct > 9 ? '12px' : '10px');
+    const fontPct = pct > 18 ? '22px' : (pct > 9 ? '17px' : '13px');
+    return '<div style="flex-grow:' + Math.max(vals[i],1) + ';flex-basis:60px;min-height:50px;' +
+      'background:' + color + ';border-radius:4px;display:flex;flex-direction:column;' +
+      'justify-content:center;align-items:center;text-align:center;padding:6px;position:relative;cursor:default" ' +
+      'title="' + label + ': ' + vals[i] + ' (' + Math.round(pct) + '%)">' +
+      '<span style="font-weight:700;color:#111;font-size:' + fontPct + ';line-height:1">' + Math.round(pct) + '%</span>' +
+      '<span style="font-size:' + fontBig + ';color:#111;font-weight:500;margin-top:3px;line-height:1.2">' + label + '</span>' +
+    '</div>';
+  }).join('');
 }
 
 // ── TOP PROBLEMAS RECURRENTES ─────────────────────────────────────────────────
@@ -803,6 +881,7 @@ function resetDates() {
   document.getElementById('date-from').value = dates[0] || '2026-05-05';
   document.getElementById('date-to').value   = dates[dates.length-1] || '2026-05-15';
   document.getElementById('sup-filter').value = '';
+  document.getElementById('sede-filter').value = '';
   update();
 }
 
