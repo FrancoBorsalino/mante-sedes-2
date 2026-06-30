@@ -368,6 +368,15 @@
     <div class="detail-table-wrap" id="detail-pp-table"></div>
   </div>
 
+  <!-- DETALLE: Elementos Deportivos pendientes -->
+  <div class="detail-section" id="detail-ed">
+    <div class="detail-header">
+      <span class="detail-title">Elementos Deportivos · pendientes de compra</span>
+      <button class="detail-close" onclick="toggleDetail('ed')">Cerrar ✕</button>
+    </div>
+    <div class="detail-table-wrap" id="detail-ed-table"></div>
+  </div>
+
   <div class="kpi-row">
     <div class="kpi">
       <div class="kpi-label">Requerimientos</div>
@@ -397,11 +406,11 @@
         </div>
       </div>
     </div>
-    <div class="kpi kpi-alert">
-      <div class="kpi-label">Elementos Deportivos · pendientes</div>
+    <div class="kpi kpi-alert" id="kpi-ed" onclick="toggleDetail('ed')" style="cursor:pointer">
+      <div class="kpi-label">Elementos Deportivos · pendientes <span style="opacity:.5">▾</span></div>
       <div class="kpi-val" id="k-edeport">—</div>
       <div class="kpi-sub" id="k-edeport-sub">—</div>
-      <a href="#ed-section" class="kpi-alert-tag" style="text-decoration:none;cursor:pointer">Gestión Compras</a>
+      <a href="#ed-section" class="kpi-alert-tag" style="text-decoration:none;cursor:pointer" onclick="event.stopPropagation()">Gestión Compras</a>
     </div>
   </div>
 
@@ -608,13 +617,17 @@ let lastFilteredData = [];
 function toggleDetail(which) {
   const el = document.getElementById('detail-' + which);
   const isOpen = el.classList.contains('open');
-  // cerrar ambos primero
-  document.getElementById('detail-proc').classList.remove('open');
-  document.getElementById('detail-pp').classList.remove('open');
+  // cerrar todos primero
+  ['proc','pp','ed'].forEach(w => document.getElementById('detail-' + w).classList.remove('open'));
   if (!isOpen) {
     el.classList.add('open');
-    if (which === 'proc') renderDetailTable('detail-proc-table', lastFilteredData.filter(d => d.Estatus === 'En proceso'), false);
-    else renderDetailTable('detail-pp-table', lastFilteredData.filter(d => d.Estatus === 'Postergado' || d.Estatus === 'Pendiente'), true);
+    if (which === 'proc') {
+      renderDetailTable('detail-proc-table', lastFilteredData.filter(d => d.Estatus === 'En proceso'), false);
+    } else if (which === 'pp') {
+      renderDetailTable('detail-pp-table', lastFilteredData.filter(d => d.Estatus === 'Postergado' || d.Estatus === 'Pendiente'), true);
+    } else if (which === 'ed') {
+      renderEdDetailTable(lastFilteredData.filter(d => d.Sector === 'Elementos Deportivos' && d.Estatus === 'En proceso'));
+    }
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
@@ -653,6 +666,33 @@ function renderDetailTable(containerId, rows, showStatus) {
       '<td style="min-width:220px;max-width:380px">' + escapeHtml(r.Descripcion) + '</td>' +
       '<td style="white-space:nowrap">' + fotos + '</td>' +
       (showStatus ? '<td><span class="status-pill ' + statusClass(r.Estatus) + '">' + escapeHtml(r.Estatus) + '</span></td>' : '') +
+      '</tr>';
+  }).join('') + '</tbody>';
+
+  el.innerHTML = '<table class="detail-table">' + head + body + '</table>';
+}
+
+function renderEdDetailTable(rows) {
+  const el = document.getElementById('detail-ed-table');
+  if (!rows.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:.5rem 0">No hay Elementos Deportivos pendientes de compra para el período / filtros actuales.</p>';
+    return;
+  }
+  const sorted = rows.slice().sort((a,b) => (a.date||'') < (b.date||'') ? 1 : -1);
+
+  let head = '<thead><tr>' +
+    '<th>Fecha</th><th>Supervisor</th><th>Sede</th><th>Elementos solicitados</th><th>Descripción</th><th>Fotos</th>' +
+    '</tr></thead>';
+
+  let body = '<tbody>' + sorted.map(r => {
+    const fotos = [fotoLink(r.FotoVideo, '📷 1'), fotoLink(r.Foto2, '📷 2')].filter(Boolean).join(' · ') || '—';
+    return '<tr>' +
+      '<td style="white-space:nowrap">' + (r.date || '—') + '</td>' +
+      '<td style="white-space:nowrap">' + escapeHtml(r.Supervisor) + '</td>' +
+      '<td style="white-space:nowrap">' + escapeHtml((r.Sede||'').replace(' - ',' · ')) + '</td>' +
+      '<td style="min-width:160px;color:var(--orange);font-weight:500">' + escapeHtml(r.EdSolicitados || '—') + '</td>' +
+      '<td style="min-width:200px;max-width:340px">' + escapeHtml(r.Descripcion) + '</td>' +
+      '<td style="white-space:nowrap">' + fotos + '</td>' +
       '</tr>';
   }).join('') + '</tbody>';
 
@@ -715,6 +755,9 @@ function update() {
   }
   if (document.getElementById('detail-pp').classList.contains('open')) {
     renderDetailTable('detail-pp-table', data.filter(d => d.Estatus === 'Postergado' || d.Estatus === 'Pendiente'), true);
+  }
+  if (document.getElementById('detail-ed').classList.contains('open')) {
+    renderEdDetailTable(data.filter(d => d.Sector === 'Elementos Deportivos' && d.Estatus === 'En proceso'));
   }
 
   // Mostrar/ocultar paneles que solo tienen sentido en vista general (todas las sedes)
