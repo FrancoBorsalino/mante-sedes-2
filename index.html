@@ -207,6 +207,57 @@
     text-transform: uppercase; padding: 2px 7px; border-radius: 3px;
   }
 
+  /* DETAIL TABLE (En proceso / Postergados-Pendientes) */
+  .detail-section {
+    display: none;
+    margin-bottom: 1.75rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    animation: slideDown .25s ease;
+  }
+  .detail-section.open { display: block; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .detail-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .detail-title {
+    font-size: 11px; font-weight: 700; color: var(--text);
+    text-transform: uppercase; letter-spacing: .08em;
+  }
+  .detail-close {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    font-size: 11px; padding: .3rem .7rem; border-radius: 4px; cursor: pointer;
+  }
+  .detail-close:hover { border-color: var(--orange); color: var(--orange); }
+  .detail-table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+  table.detail-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.detail-table thead th {
+    text-align: left; padding: 6px 10px; color: var(--muted);
+    font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 9px;
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg2);
+    white-space: nowrap;
+  }
+  table.detail-table tbody td {
+    padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text); vertical-align: top;
+  }
+  table.detail-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .detail-table a { color: #5B9CF6; text-decoration: none; }
+  .detail-table a:hover { text-decoration: underline; }
+  .status-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .status-pill.proceso   { background: rgba(255,92,51,.15); color: var(--orange); }
+  .status-pill.postergado{ background: rgba(255,255,255,.08); color: #aaa; }
+  .status-pill.pendiente { background: rgba(232,51,46,.18); color: #E8332E; }
+
   /* CHARTS */
   .charts-grid {
     display: grid;
@@ -299,6 +350,24 @@
 <main>
   <p class="range-label" id="range-label"></p>
 
+  <!-- DETALLE: En proceso -->
+  <div class="detail-section" id="detail-proc">
+    <div class="detail-header">
+      <span class="detail-title">En proceso · detalle</span>
+      <button class="detail-close" onclick="toggleDetail('proc')">Cerrar ✕</button>
+    </div>
+    <div class="detail-table-wrap" id="detail-proc-table"></div>
+  </div>
+
+  <!-- DETALLE: Postergados / Pendientes -->
+  <div class="detail-section" id="detail-pp">
+    <div class="detail-header">
+      <span class="detail-title">Postergados / Pendientes · detalle</span>
+      <button class="detail-close" onclick="toggleDetail('pp')">Cerrar ✕</button>
+    </div>
+    <div class="detail-table-wrap" id="detail-pp-table"></div>
+  </div>
+
   <div class="kpi-row">
     <div class="kpi">
       <div class="kpi-label">Requerimientos</div>
@@ -310,13 +379,13 @@
       <div class="kpi-val green" id="k-exec">—</div>
       <div class="kpi-sub" id="k-exec-pct">—</div>
     </div>
-    <div class="kpi">
-      <div class="kpi-label">En proceso</div>
+    <div class="kpi" id="kpi-proc" onclick="toggleDetail('proc')" style="cursor:pointer">
+      <div class="kpi-label">En proceso <span style="opacity:.5">▾</span></div>
       <div class="kpi-val orange" id="k-proc">—</div>
       <div class="kpi-sub" id="k-proc-pct">—</div>
     </div>
-    <div class="kpi">
-      <div class="kpi-label">Postergados / Pendientes</div>
+    <div class="kpi" id="kpi-pp" onclick="toggleDetail('pp')" style="cursor:pointer">
+      <div class="kpi-label">Postergados / Pendientes <span style="opacity:.5">▾</span></div>
       <div style="display:flex;align-items:baseline;gap:14px">
         <div>
           <div class="kpi-val" id="k-poster" style="color:#1a1a1a;-webkit-text-stroke:1px #555;font-size:2.1rem">—</div>
@@ -394,7 +463,7 @@
 </footer>
 
 <script>
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyzVEilYoI2P6IifqBA10wiXtzJfxw8lFgzIE99deDznKUy2m3AOX7k8dCLhJs0xZPF/exec';
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzDUNaqW3_KQZmn7lHpHVES_wXEhUEJLhKI68Pu47NWA3KfkAOQsGimj38nUy2wJzlD/exec';
 const ALL_SEDES = ["1 - RECOLETA", "2 - CAÑITAS II", "3 - PALERMO SOHO", "4 - BARRIO NORTE", "5 - GUTIERREZ", "6 - CABILDO", "7 - CABALLITO", "8 - SANTA FE", "9 - ALMAGRO", "10 - URQUIZA", "11 - SCALABRINI", "12 - JUNCAL", "13 - COLEGIALES", "14 - CARRANZA", "15 - HOLMBERG", "18 - PALERMO CHICO", "19 - OLIVOS", "23 - P. CENTENARIO", "24 - TRIUNVIRATO", "25 - DIRECTORIO", "26 - MANSILLA", "30 - NUÑEZ", "31 - MARTINEZ"];
 const RAW = [{"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-05", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-06", "Supervisor": "Débora", "Sede": "10 - URQUIZA", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-08", "Supervisor": "Débora", "Sede": "10 - URQUIZA", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-08", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": "Active Clean"}, {"date": "2026-05-08", "Supervisor": "Bautista", "Sede": "14 - CARRANZA", "Sector": "Limpieza", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-08", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Fachada", "Estatus": "Ejecutado", "Proveedor": "Cerrajería Marina"}, {"date": "2026-05-08", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-09", "Supervisor": "Angel", "Sede": "1 - RECOLETA", "Sector": "Paisajismo", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-11", "Supervisor": "Valentin", "Sede": "15 - HOLMBERG", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-11", "Supervisor": "Diego", "Sede": "5 - GUTIERREZ", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-11", "Supervisor": "Angel", "Sede": "1 - RECOLETA", "Sector": "Fachada", "Estatus": "Ejecutado", "Proveedor": "Cerrajería Marina"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "7 - CABALLITO", "Sector": "Limpieza", "Estatus": "Ejecutado", "Proveedor": "Active Clean"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "7 - CABALLITO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "25 - DIRECTORIO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-12", "Supervisor": "Juan", "Sede": "25 - DIRECTORIO", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Angel", "Sede": "13 - COLEGIALES", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Angel", "Sede": "13 - COLEGIALES", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Paisajismo", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": "Fer - 866"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-12", "Supervisor": "Belén", "Sede": "24 - TRIUNVIRATO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Diego Hiden"}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "3 - PALERMO SOHO", "Sector": "Recepción", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "8 - SANTA FE", "Sector": "Recepción", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "3 - PALERMO SOHO", "Sector": "Entrenamiento", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Antonio", "Sede": "3 - PALERMO SOHO", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Valeria", "Sede": "26 - MANSILLA", "Sector": "Limpieza", "Estatus": "Ejecutado", "Proveedor": null}, {"date": "2026-05-13", "Supervisor": "Lucas", "Sede": "11 - SCALABRINI", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-14", "Supervisor": "Angel", "Sede": "13 - COLEGIALES", "Sector": "Baños", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-14", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": null}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "11 - SCALABRINI", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Aldo"}, {"date": "2026-05-14", "Supervisor": "Angel", "Sede": "30 - NUÑEZ", "Sector": "Entrenamiento", "Estatus": "En proceso", "Proveedor": "Diego Hiden"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "11 - SCALABRINI", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Fachada", "Estatus": "Ejecutado", "Proveedor": "Diego Hiden"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "12 - JUNCAL", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-14", "Supervisor": "Lucas", "Sede": "9 - ALMAGRO", "Sector": "Fachada", "Estatus": "En proceso", "Proveedor": "Cristales Coronel"}, {"date": "2026-05-15", "Supervisor": "Lucas", "Sede": "23 - P. CENTENARIO", "Sector": "Recepción", "Estatus": "En proceso", "Proveedor": "Gustavo"}, {"date": "2026-05-15", "Supervisor": "Diego", "Sede": "4 - BARRIO NORTE", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-15", "Supervisor": "Bautista", "Sede": "18 - PALERMO CHICO", "Sector": "Elementos Deportivos", "Estatus": "En proceso", "Proveedor": "Compras"}, {"date": "2026-05-15", "Supervisor": "Juliana", "Sede": "6 - CABILDO", "Sector": "Baños", "Estatus": "En proceso", "Proveedor": null}];
 
@@ -533,6 +602,63 @@ function setStatus(html, cls) {
   el.className = 'sync-status ' + (cls || '');
 }
 
+// ── DETALLE EN PROCESO / POSTERGADOS-PENDIENTES ────────────────────────────────
+let lastFilteredData = [];
+
+function toggleDetail(which) {
+  const el = document.getElementById('detail-' + which);
+  const isOpen = el.classList.contains('open');
+  // cerrar ambos primero
+  document.getElementById('detail-proc').classList.remove('open');
+  document.getElementById('detail-pp').classList.remove('open');
+  if (!isOpen) {
+    el.classList.add('open');
+    if (which === 'proc') renderDetailTable('detail-proc-table', lastFilteredData.filter(d => d.Estatus === 'En proceso'), false);
+    else renderDetailTable('detail-pp-table', lastFilteredData.filter(d => d.Estatus === 'Postergado' || d.Estatus === 'Pendiente'), true);
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fotoLink(url, label) {
+  if (!url) return '';
+  return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + label + '</a>';
+}
+
+function renderDetailTable(containerId, rows, showStatus) {
+  const el = document.getElementById(containerId);
+  if (!rows.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:.5rem 0">No hay requerimientos en este estado para el período / filtros actuales.</p>';
+    return;
+  }
+  const statusClass = s => s === 'En proceso' ? 'proceso' : (s === 'Postergado' ? 'postergado' : 'pendiente');
+  const sorted = rows.slice().sort((a,b) => (a.date||'') < (b.date||'') ? 1 : -1);
+
+  let head = '<thead><tr>' +
+    '<th>Fecha</th><th>Supervisor</th><th>Sede</th><th>Sector</th><th>Descripción</th><th>Fotos</th>' +
+    (showStatus ? '<th>Estatus</th>' : '') +
+    '</tr></thead>';
+
+  let body = '<tbody>' + sorted.map(r => {
+    const fotos = [fotoLink(r.FotoVideo, '📷 1'), fotoLink(r.Foto2, '📷 2')].filter(Boolean).join(' · ') || '—';
+    return '<tr>' +
+      '<td style="white-space:nowrap">' + (r.date || '—') + '</td>' +
+      '<td style="white-space:nowrap">' + escapeHtml(r.Supervisor) + '</td>' +
+      '<td style="white-space:nowrap">' + escapeHtml((r.Sede||'').replace(' - ',' · ')) + '</td>' +
+      '<td style="white-space:nowrap">' + escapeHtml(r.Sector) + '</td>' +
+      '<td style="min-width:220px;max-width:380px">' + escapeHtml(r.Descripcion) + '</td>' +
+      '<td style="white-space:nowrap">' + fotos + '</td>' +
+      (showStatus ? '<td><span class="status-pill ' + statusClass(r.Estatus) + '">' + escapeHtml(r.Estatus) + '</span></td>' : '') +
+      '</tr>';
+  }).join('') + '</tbody>';
+
+  el.innerHTML = '<table class="detail-table">' + head + body + '</table>';
+}
+
 // ── SYNC
 async function syncFromSheet() {
   const btn = document.getElementById('btn-sync');
@@ -581,6 +707,15 @@ function update() {
     .filter(d => !sup || d.Supervisor === sup)
     .filter(d => !sedeFiltro || d.Sede === sedeFiltro);
   destroyAll();
+  lastFilteredData = data;
+
+  // Si hay alguna tabla de detalle abierta, refrescarla con los nuevos datos filtrados
+  if (document.getElementById('detail-proc').classList.contains('open')) {
+    renderDetailTable('detail-proc-table', data.filter(d => d.Estatus === 'En proceso'), false);
+  }
+  if (document.getElementById('detail-pp').classList.contains('open')) {
+    renderDetailTable('detail-pp-table', data.filter(d => d.Estatus === 'Postergado' || d.Estatus === 'Pendiente'), true);
+  }
 
   // Mostrar/ocultar paneles que solo tienen sentido en vista general (todas las sedes)
   const generalOnly = document.querySelectorAll('.general-only');
