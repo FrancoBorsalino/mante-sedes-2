@@ -432,7 +432,7 @@
 
     <div class="card" style="grid-column:span 1;min-width:0">
       <div class="card-title">Distribución por área</div>
-      <div id="treemap-areas" style="height:260px;display:flex;flex-wrap:wrap;gap:3px;align-items:stretch"></div>
+      <div id="treemap-areas" style="height:260px;position:relative"></div>
       <div class="empty" id="empty-areas" style="display:none">Sin datos</div>
     </div>
 
@@ -983,7 +983,7 @@ function renderEdChart(data) {
   });
 }
 
-// ── TREEMAP DISTRIBUCIÓN POR ÁREA ────────────────────────────────────────────
+// ── TREEMAP DISTRIBUCIÓN POR ÁREA (squarified real) ──────────────────────────
 function renderTreemapAreas(labels, vals, total) {
   const el = document.getElementById('treemap-areas');
   const emptyEl = document.getElementById('empty-areas');
@@ -995,24 +995,95 @@ function renderTreemapAreas(labels, vals, total) {
   emptyEl.style.display = 'none';
 
   const colors = ['#FF5C33','#4CAF7D','#5B9CF6','#A78BFA','#F5A623','#E879A0','#34D399','#FB923C','#9DA5A8'];
+  const W = el.clientWidth || 400;
+  const H = 260;
   const sumVal = vals.reduce((a,b)=>a+b,0);
 
-  // Simple proporción por área usando flex-grow (no es un treemap geométrico exacto,
-  // pero da el mismo efecto visual de "rectángulos proporcionales al volumen")
-  el.innerHTML = labels.map((label, i) => {
-    const pct = (vals[i] / sumVal * 100);
-    const color = colors[i % colors.length];
-    // tamaño de fuente proporcional al área para que los grandes se destaquen
-    const fontBig = pct > 18 ? '15px' : (pct > 9 ? '12px' : '10px');
-    const fontPct = pct > 18 ? '22px' : (pct > 9 ? '17px' : '13px');
-    return '<div style="flex-grow:' + Math.max(vals[i],1) + ';flex-basis:60px;min-height:50px;' +
-      'background:' + color + ';border-radius:4px;display:flex;flex-direction:column;' +
-      'justify-content:center;align-items:center;text-align:center;padding:6px;position:relative;cursor:default" ' +
-      'title="' + label + ': ' + vals[i] + ' (' + Math.round(pct) + '%)">' +
-      '<span style="font-weight:700;color:#111;font-size:' + fontPct + ';line-height:1">' + Math.round(pct) + '%</span>' +
-      '<span style="font-size:' + fontBig + ';color:#111;font-weight:500;margin-top:3px;line-height:1.2">' + label + '</span>' +
-    '</div>';
-  }).join('');
+  // Items ordenados de mayor a menor (clave para que el squarify dé buenos resultados)
+  const items = labels.map((label,i) => ({ label, val: vals[i], color: colors[i % colors.length] }))
+    .sort((a,b) => b.val - a.val);
+
+  // Algoritmo squarified treemap simplificado
+  function squarify(items, x, y, w, h) {
+    if (!items.length) return [];
+    if (items.length === 1) {
+      return [{ ...items[0], x, y, w, h }];
+    }
+    const totalVal = items.reduce((s,i) => s+i.val, 0);
+    const isWide = w >= h;
+    const sideLen = isWide ? h : w;
+
+    // Encontrar el mejor corte (greedy, suficiente para pocas categorías)
+    let bestRow = [items[0]];
+    let bestWorst = worstAspect(bestRow, totalVal, sideLen);
+    for (let i = 1; i < items.length; i++) {
+      const candidate = items.slice(0, i+1);
+      const worst = worstAspect(candidate, totalVal, sideLen);
+      if (worst <= bestWorst) {
+        bestRow = candidate;
+        bestWorst = worst;
+      } else break;
+    }
+
+    const rowVal = bestRow.reduce((s,i) => s+i.val, 0);
+    const rowFrac = rowVal / totalVal;
+    const rest = items.slice(bestRow.length);
+
+    let rects = [];
+    if (isWide) {
+      const rowW = w * rowFrac;
+      let cy = y;
+      bestRow.forEach(it => {
+        const itH = h * (it.val / rowVal);
+        rects.push({ ...it, x, y: cy, w: rowW, h: itH });
+        cy += itH;
+      });
+      if (rest.length) rects = rects.concat(squarify(rest, x + rowW, y, w - rowW, h));
+    } else {
+      const rowH = h * rowFrac;
+      let cx = x;
+      bestRow.forEach(it => {
+        const itW = w * (it.val / rowVal);
+        rects.push({ ...it, x: cx, y, w: itW, h: rowH });
+        cx += itW;
+      });
+      if (rest.length) rects = rects.concat(squarify(rest, x, y + rowH, w, h - rowH));
+    }
+    return rects;
+  }
+
+  function worstAspect(row, totalVal, sideLen) {
+    const rowVal = row.reduce((s,i) => s+i.val, 0);
+    const areaTotal = (rowVal / totalVal) * sideLen * sideLen; // aproximación
+    let maxRatio = 0;
+    row.forEach(it => {
+      const area = (it.val / totalVal) * sideLen * sideLen / (rowVal/totalVal || 1);
+      const side1 = sideLen;
+      const side2 = (it.val / rowVal) * (areaTotal / sideLen || 1);
+      const ratio = Math.max(side1/side2, side2/side1);
+      if (ratio > maxRatio) maxRatio = ratio;
+    });
+    return maxRatio;
+  }
+
+  const rects = squarify(items, 0, 0, W, H);
+
+  el.innerHTML = '<div style="position:relative;width:100%;height:' + H + 'px">' +
+    rects.map(r => {
+      const pct = (r.val / sumVal * 100);
+      const area = r.w * r.h;
+      const fontPct = area > 5000 ? '20px' : (area > 1800 ? '15px' : '11px');
+      const fontLbl = area > 5000 ? '13px' : (area > 1800 ? '11px' : '9px');
+      const showLabel = r.w > 50 && r.h > 30;
+      return '<div style="position:absolute;left:' + r.x + 'px;top:' + r.y + 'px;width:' + Math.max(r.w-3,0) + 'px;height:' + Math.max(r.h-3,0) + 'px;' +
+        'background:' + r.color + ';border-radius:4px;display:flex;flex-direction:column;' +
+        'justify-content:center;align-items:center;text-align:center;padding:4px;overflow:hidden;cursor:default" ' +
+        'title="' + r.label + ': ' + r.val + ' (' + Math.round(pct) + '%)">' +
+        (showLabel ? '<span style="font-weight:700;color:#111;font-size:' + fontPct + ';line-height:1">' + Math.round(pct) + '%</span>' +
+        '<span style="font-size:' + fontLbl + ';color:#111;font-weight:500;margin-top:2px;line-height:1.15">' + r.label + '</span>' : '') +
+      '</div>';
+    }).join('') +
+  '</div>';
 }
 
 // ── TOP PROBLEMAS RECURRENTES ─────────────────────────────────────────────────
